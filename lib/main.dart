@@ -12,7 +12,7 @@ class VibraXApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF7C4DFF),
+          seedColor: const Color(0xFFFF2D87),
           brightness: Brightness.dark,
         ),
       ),
