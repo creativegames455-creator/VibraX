@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const supabaseUrl = 'https://rqsyygahmvfmmehbenan.supabase.co';
 const supabaseKey = 'sb_publishable_ec0ipH62eEDBdzxM04MKyQ_oKOdN8g5';
@@ -83,6 +84,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _loading = false;
+  bool _obscure = true;
+  bool _remember = true;
 
   @override
   void dispose() {
@@ -122,100 +125,243 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  InputDecoration _deco(String label, IconData icon) => InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        filled: true,
-        fillColor: Colors.white10,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-      );
+  Widget _pill({
+    required TextEditingController c,
+    required String hint,
+    required IconData icon,
+    bool obscure = false,
+    Widget? trailing,
+    TextInputType? type,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0x99120414),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: kPink, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: kPink),
+          Container(
+            width: 1,
+            height: 28,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            color: Colors.white24,
+          ),
+          Expanded(
+            child: TextField(
+              controller: c,
+              obscureText: obscure,
+              keyboardType: type,
+              style: const TextStyle(fontSize: 17),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: hint,
+                hintStyle: const TextStyle(color: Colors.white60),
+              ),
+            ),
+          ),
+          if (trailing != null) trailing,
+        ],
+      ),
+    );
+  }
+
+  void _soon() => _msg('Coming soon');
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2A0A3D), Color(0xFF120816), Colors.black],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const VibraLogo(),
-                  const SizedBox(height: 44),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: _deco('Email', Icons.mail_outline),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration: _deco('Password (6+ characters)', Icons.lock_outline),
-                  ),
-                  const SizedBox(height: 26),
-                  if (_loading)
-                    const Center(child: CircularProgressIndicator())
-                  else ...[
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF2D87), Color(0xFF7C4DFF)],
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x66FF2D87),
-                            blurRadius: 20,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const LoginBackground(),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const VibraLogo(),
+                    const SizedBox(height: 28),
+                    _pill(
+                      c: _email,
+                      hint: 'Email',
+                      icon: Icons.mail_outline,
+                      type: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 14),
+                    _pill(
+                      c: _password,
+                      hint: 'Password',
+                      icon: Icons.lock_outline,
+                      obscure: _obscure,
+                      trailing: IconButton(
+                        icon: Icon(_obscure
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined),
+                        onPressed: () => setState(() => _obscure = !_obscure),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(30),
-                          onTap: () => _submit(false),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Center(
-                              child: Text(
-                                'LOG IN',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 3,
-                                  color: Colors.white,
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _remember = !_remember),
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _remember ? kPink : Colors.transparent,
+                              border: Border.all(color: kPink),
+                            ),
+                            child: _remember
+                                ? const Icon(Icons.check,
+                                    size: 18, color: Colors.white)
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Remember me'),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: _soon,
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                                color: kPink, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.favorite_border,
+                            color: kPink, size: 20),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    if (_loading)
+                      const Center(child: CircularProgressIndicator())
+                    else
+                      Container(
+                        height: 58,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF4FA3), Color(0xFFB026D6)],
+                          ),
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x88FF4FA3),
+                              blurRadius: 22,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(32),
+                            onTap: () => _submit(false),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.favorite, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Log In',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
+                                SizedBox(width: 10),
+                                Icon(Icons.arrow_forward, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(child: Container(height: 1, color: Colors.white24)),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.favorite, size: 14, color: kPink),
+                              SizedBox(width: 6),
+                              Text('OR'),
+                              SizedBox(width: 6),
+                              Icon(Icons.favorite, size: 14, color: kPink),
+                            ],
+                          ),
+                        ),
+                        Expanded(child: Container(height: 1, color: Colors.white24)),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    Center(
+                      child: FractionallySizedBox(
+                        widthFactor: 0.78,
+                        child: GestureDetector(
+                          onTap: _soon,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0x66120414),
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(color: kPink, width: 1.4),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.person_outline, color: kPink),
+                                Container(
+                                  width: 1,
+                                  height: 26,
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 14),
+                                  color: Colors.white24,
+                                ),
+                                const Text('Continue with Email',
+                                    style: TextStyle(fontSize: 16)),
+                              ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => _submit(true),
-                      child: const Text('New here? Create account'),
+                    const SizedBox(height: 22),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don't have an account?"),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _submit(true),
+                          child: const Text(
+                            'Sign Up  →',
+                            style: TextStyle(
+                              color: kPink,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -606,53 +752,185 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
+
+const kPink = Color(0xFFFF4FA3);
+
+class LoginBackground extends StatelessWidget {
+  const LoginBackground({super.key});
+
+  static const List<List<double>> _hearts = [
+    [-0.9, -0.92, 26, 0.55],
+    [-0.55, -0.7, 14, 0.4],
+    [0.85, -0.95, 18, 0.5],
+    [-0.95, -0.35, 44, 0.25],
+    [0.95, -0.2, 34, 0.3],
+    [-0.8, 0.15, 20, 0.35],
+    [0.9, 0.4, 46, 0.25],
+    [-0.9, 0.7, 36, 0.3],
+    [0.7, 0.85, 22, 0.4],
+    [0.1, 0.95, 16, 0.35],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFB0306A),
+                Color(0xFF6A1B5C),
+                Color(0xFF2A0A33),
+                Color(0xFF0B0310),
+              ],
+              stops: [0.0, 0.3, 0.65, 1.0],
+            ),
+          ),
+        ),
+        Align(
+          alignment: const Alignment(0.6, -0.6),
+          child: Container(
+            width: 300,
+            height: 300,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [Color(0xAAFFB86C), Color(0x00FFB86C)],
+              ),
+            ),
+          ),
+        ),
+        for (final h in _hearts)
+          Align(
+            alignment: Alignment(h[0], h[1]),
+            child: Icon(
+              Icons.favorite,
+              size: h[2],
+              color: kPink.withValues(alpha: h[3]),
+            ),
+          ),
+        const Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 170,
+          child: CustomPaint(painter: GlowWavePainter()),
+        ),
+      ],
+    );
+  }
+}
+
+class GlowWavePainter extends CustomPainter {
+  const GlowWavePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    void wave(double base, double amp, double width, Color color, double blur) {
+      final w = size.width;
+      final h = size.height;
+      final path = Path()
+        ..moveTo(0, h * base)
+        ..cubicTo(w * 0.25, h * (base - amp), w * 0.45, h * (base + amp),
+            w * 0.65, h * base)
+        ..cubicTo(w * 0.8, h * (base - amp * 0.8), w * 0.92,
+            h * (base - amp * 0.5), w, h * (base - amp * 0.2));
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = width
+        ..color = color;
+      if (blur > 0) {
+        paint.maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+      }
+      canvas.drawPath(path, paint);
+    }
+
+    wave(0.62, 0.35, 6, const Color(0x99FF4FA3), 6);
+    wave(0.62, 0.35, 1.5, const Color(0xFFFF7FC0), 0);
+    wave(0.78, 0.30, 5, const Color(0x77B026D6), 5);
+    wave(0.78, 0.30, 1.2, const Color(0xFFD070F0), 0);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class VibraLogo extends StatelessWidget {
   const VibraLogo({super.key});
+
+  Widget _bar(double h) => Container(
+        width: 8,
+        height: h,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: kPink,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: const [BoxShadow(color: Color(0x88FF4FA3), blurRadius: 10)],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 104,
-          height: 104,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [Color(0xFFFF2D87), Color(0xFF7C4DFF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _bar(34),
+            _bar(58),
+            const SizedBox(width: 6),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ShaderMask(
+                  shaderCallback: (r) => const LinearGradient(
+                    colors: [Color(0xFFFF4FA3), Color(0xFFB026D6)],
+                  ).createShader(r),
+                  child: const Icon(Icons.favorite_border,
+                      size: 96, color: Colors.white),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Icon(Icons.play_arrow_rounded, size: 40, color: kPink),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x80FF2D87),
-                blurRadius: 36,
-                spreadRadius: 3,
+            const SizedBox(width: 6),
+            _bar(58),
+            _bar(34),
+          ],
+        ),
+        const SizedBox(height: 6),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Vibra',
+                style: GoogleFonts.pacifico(fontSize: 52, color: Colors.white),
+              ),
+              TextSpan(
+                text: 'X',
+                style: GoogleFonts.pacifico(
+                  fontSize: 52,
+                  color: kPink,
+                  shadows: const [
+                    Shadow(color: Color(0xAAFF4FA3), blurRadius: 18),
+                  ],
+                ),
               ),
             ],
           ),
-          child: const Icon(Icons.graphic_eq, size: 58, color: Colors.white),
         ),
-        const SizedBox(height: 18),
-        ShaderMask(
-          shaderCallback: (rect) => const LinearGradient(
-            colors: [Color(0xFFFF2D87), Color(0xFFFFB86C), Color(0xFF7C4DFF)],
-          ).createShader(rect),
-          child: const Text(
-            'VibraX',
-            style: TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.w900,
-              fontStyle: FontStyle.italic,
-              letterSpacing: 4,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'FEEL THE VIBE',
-          style: TextStyle(fontSize: 12, letterSpacing: 7, color: Colors.white54),
+        const SizedBox(height: 2),
+        Text(
+          'Connect  ♥  Share  ♥  Love',
+          style: GoogleFonts.dancingScript(fontSize: 20, color: Colors.white),
         ),
       ],
     );
