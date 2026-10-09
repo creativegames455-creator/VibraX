@@ -439,62 +439,290 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<List<Map<String, dynamic>>>(
-      valueListenable: postsNotifier,
-      builder: (context, posts, _) {
-        if (posts.isEmpty) {
-          return SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.video_library_outlined, size: 56),
-                    const SizedBox(height: 12),
-                    ValueListenableBuilder<String?>(
-                      valueListenable: postsError,
-                      builder: (_, err, __) => Text(
-                        err == null
-                            ? 'No posts yet. Tap Create to share the first one.'
-                            : 'Could not load posts: $err',
-                        textAlign: TextAlign.center,
-                      ),
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _tab = 1;
+  int _chip = 0;
+  static const _tabs = ['Video Chat', 'Featured', 'Party', 'Global', 'Nearby'];
+  static const _chipNames = ['Recommend', 'Head2Head', 'Singing', 'Chat'];
+  static const _chipIcons = [
+    Icons.local_fire_department,
+    Icons.sports_mma,
+    Icons.mic,
+    Icons.chat_bubble_outline,
+  ];
+
+  Color get _glass => Colors.white.withValues(alpha: 0.14);
+
+  void _open(Map<String, dynamic> p) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+        body: PostCard(post: p),
+      ),
+    ));
+  }
+
+  Widget _topTabs() => Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+        child: Row(children: [
+          IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Search - coming soon')))),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(_tabs.length, (i) {
+                  final sel = i == _tab;
+                  return GestureDetector(
+                    onTap: () => setState(() => _tab = i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text(_tabs[i],
+                            style: TextStyle(
+                                fontSize: sel ? 22 : 18,
+                                fontWeight:
+                                    sel ? FontWeight.bold : FontWeight.w400,
+                                color: sel ? Colors.white : Colors.white54)),
+                        const SizedBox(height: 3),
+                        Container(
+                          height: 4,
+                          width: sel ? 36 : 0,
+                          decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                  colors: [Color(0xFF8E2DE2), kPink]),
+                              borderRadius: BorderRadius.circular(4)),
+                        ),
+                      ]),
                     ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: loadPosts,
-                      child: const Text('Refresh'),
+                  );
+                }),
+              ),
+            ),
+          ),
+          IconButton(
+              icon: const Icon(Icons.emoji_events_outlined, color: kPink),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ranking - coming soon')))),
+        ]),
+      );
+
+  Widget _chipRow() => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: Row(children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(_chipNames.length, (i) {
+                  final sel = i == _chip;
+                  return GestureDetector(
+                    onTap: () => setState(() => _chip = i),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                          gradient: sel
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF8E2DE2), kPink])
+                              : null,
+                          color: sel ? null : _glass,
+                          borderRadius: BorderRadius.circular(30)),
+                      child: Row(children: [
+                        Icon(_chipIcons[i], size: 22, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(_chipNames[i],
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500)),
+                      ]),
                     ),
+                  );
+                }),
+              ),
+            ),
+          ),
+          IconButton(
+              icon: const Icon(Icons.filter_list),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Filter - coming soon')))),
+        ]),
+      );
+
+  Widget _ranking(List<Map<String, dynamic>> posts) {
+    final top = posts.take(3).toList();
+    return GestureDetector(
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Diamond Ranking - coming soon'))),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+            gradient: const LinearGradient(
+                colors: [Color(0xFF5B2BD1), Color(0xFF8E2DE2), kPink]),
+            borderRadius: BorderRadius.circular(22)),
+        child: Row(children: [
+          const Text('Diamond Ranking',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+                color: Colors.white24, borderRadius: BorderRadius.circular(6)),
+            child: const Text('Day',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: 90,
+            height: 36,
+            child: Stack(children: [
+              for (var i = 0; i < top.length; i++)
+                Positioned(
+                  left: i * 24.0,
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: colorFor('${top[i]['id']}'),
+                      child: Text(
+                          '${top[i]['username'] ?? 'u'}'
+                              .substring(0, 1)
+                              .toUpperCase(),
+                          style: const TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _card(Map<String, dynamic> p) {
+    final url = p['media_url'] as String?;
+    return GestureDetector(
+      onTap: () => _open(p),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(fit: StackFit.expand, children: [
+          Container(color: colorFor('${p['id']}')),
+          if (url != null && url.isNotEmpty)
+            Image.network(url,
+                fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox()),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.7)
                   ],
+                  stops: const [0.45, 1.0],
                 ),
               ),
             ),
-          );
-        }
-        return Stack(
-          children: [
-            PageView.builder(
-              scrollDirection: Axis.vertical,
-              itemCount: posts.length,
-              itemBuilder: (_, i) => PostCard(post: posts[i]),
+          ),
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 10,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.equalizer, size: 16, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text('${p['caption'] ?? ''}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
+                  ),
+                ]),
+                const SizedBox(height: 2),
+                Row(children: [
+                  Expanded(
+                    child: Text('${p['username'] ?? 'user'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  const Icon(Icons.local_fire_department,
+                      size: 16, color: kPink),
+                  const SizedBox(width: 2),
+                  Text('${p['likes'] ?? 0}',
+                      style: const TextStyle(color: Colors.white70)),
+                ]),
+              ],
             ),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: loadPosts,
+          ),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: postsNotifier,
+          builder: (context, posts, _) {
+            return CustomScrollView(slivers: [
+              SliverToBoxAdapter(child: _topTabs()),
+              SliverToBoxAdapter(child: _chipRow()),
+              SliverToBoxAdapter(child: _ranking(posts)),
+              if (posts.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                      child: Text('No posts yet. Tap Create to share the first one.')),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _card(posts[i]),
+                      childCount: posts.length,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
-        );
-      },
+            ]);
+          },
+        ),
+      ),
     );
   }
 }
