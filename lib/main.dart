@@ -581,19 +581,49 @@ class DiscoverScreen extends StatelessWidget {
               childAspectRatio: 0.75,
             ),
             itemCount: posts.length,
-            itemBuilder: (_, i) => Container(
-              decoration: BoxDecoration(
-                color: colorFor('${posts[i]['id']}'),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.all(10),
-              alignment: Alignment.bottomLeft,
-              child: Text(
-                '@${posts[i]['username'] ?? 'user'}\n${posts[i]['caption']}',
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
+            itemBuilder: (_, i) {
+          final url = posts[i]['media_url'] as String?;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(color: colorFor('${posts[i]['id']}')),
+                if (url != null && url.isNotEmpty)
+                  Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, st) => const SizedBox(),
+                  ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                        stops: const [0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    '@${posts[i]['username'] ?? 'user'}\n${posts[i]['caption']}',
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
             ),
+          );
+        },
           );
         },
       ),
