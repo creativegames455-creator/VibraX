@@ -48,7 +48,13 @@ class VibraXApp extends StatelessWidget {
     return MaterialApp(
       title: 'VibraX',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+      builder: (context, child) => Stack(
+          fit: StackFit.expand,
+          children: [const LoginBackground(), if (child != null) child],
+        ),
+        theme: ThemeData(
+        scaffoldBackgroundColor: Colors.transparent, // VIBRAX_INNER
+
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFFF2D87),
@@ -393,7 +399,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: NavigationBar(backgroundColor: const Color(0xE6120414), indicatorColor: const Color(0x66FF4FA3), 
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
@@ -495,11 +501,7 @@ class _PostCardState extends State<PostCard> {
     final color = colorFor('${p['id']}');
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [color, Colors.black],
-        ),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xDD0B0310)]),
       ),
       padding: const EdgeInsets.all(20),
       child: SafeArea(
@@ -543,7 +545,7 @@ class DiscoverScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Discover')),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, title: const Text('Discover')),
       body: ValueListenableBuilder<List<Map<String, dynamic>>>(
         valueListenable: postsNotifier,
         builder: (context, posts, _) {
@@ -623,7 +625,7 @@ class _CreateScreenState extends State<CreateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create')),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, title: const Text('Create')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -664,7 +666,7 @@ class LiveScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Live now')),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, title: const Text('Live now')),
       body: ListView.builder(
         itemCount: 8,
         itemBuilder: (_, i) => ListTile(
@@ -695,7 +697,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = supabase.auth.currentUser;
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, 
         title: const Text('Profile'),
         actions: [
           IconButton(
