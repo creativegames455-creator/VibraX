@@ -824,91 +824,308 @@ class LiveScreen extends StatelessWidget {
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  void _soon(BuildContext c, String t) => ScaffoldMessenger.of(c)
+      .showSnackBar(SnackBar(content: Text('$t - coming soon')));
+
+  Color get _glass => Colors.white.withValues(alpha: 0.12);
+
+  Widget _badge(String t, IconData i, Color c) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration:
+            BoxDecoration(color: c, borderRadius: BorderRadius.circular(10)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(i, size: 12, color: Colors.white),
+          const SizedBox(width: 3),
+          Text(t, style: const TextStyle(color: Colors.white, fontSize: 11)),
+        ]),
+      );
+
+  Widget _stat(BuildContext c, String label, int v) => Expanded(
+        child: GestureDetector(
+          onTap: () => _soon(c, label),
+          child: Column(children: [
+            Text('$v',
+                style: const TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.bold)),
+            Text(label, style: const TextStyle(color: Colors.white70)),
+          ]),
+        ),
+      );
+
+  Widget _bigCard(BuildContext c, String t, IconData i, List<Color> g) =>
+      Expanded(
+        child: GestureDetector(
+          onTap: () => _soon(c, t),
+          child: Container(
+            height: 80,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                gradient: LinearGradient(colors: g),
+                borderRadius: BorderRadius.circular(16)),
+            child: Stack(children: [
+              Text(t,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+              Align(
+                  alignment: Alignment.bottomRight,
+                  child: Icon(i, color: Colors.white70, size: 32)),
+            ]),
+          ),
+        ),
+      );
+
+  Widget _group(BuildContext c, List<_ProfItem> items) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        decoration: BoxDecoration(
+            color: _glass, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          children: items
+              .map((e) => ListTile(
+                    onTap: () => _soon(c, e.title),
+                    leading: Icon(e.icon, color: Colors.white),
+                    title: Text(e.title),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (e.tag != null)
+                        Text(e.tag!,
+                            style: const TextStyle(
+                                color: kPink,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.bold)),
+                      const Icon(Icons.chevron_right, color: Colors.white54),
+                    ]),
+                  ))
+              .toList(),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final user = supabase.auth.currentUser;
+    final uid = user?.id ?? '';
+    final shortId = uid.length >= 9 ? uid.substring(0, 9) : uid;
+    const grid = [
+      _ProfItem('Transaction History', Icons.receipt_long),
+      _ProfItem('VIP Center', Icons.diamond_outlined),
+      _ProfItem('Level', Icons.leaderboard),
+      _ProfItem('Broadcaster Class', Icons.workspace_premium_outlined),
+      _ProfItem('My Badge', Icons.verified_outlined),
+      _ProfItem('My Bag', Icons.shopping_bag_outlined),
+      _ProfItem('Store', Icons.storefront),
+      _ProfItem('Task Center', Icons.task_alt),
+      _ProfItem('Event Calendar', Icons.calendar_month),
+    ];
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, 
-        title: const Text('Profile'),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        title: const Text('Me',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => supabase.auth.signOut(),
-          ),
+              icon: const Icon(Icons.qr_code_scanner),
+              onPressed: () => _soon(context, 'Scan')),
+          IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => _soon(context, 'Settings')),
+          IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => supabase.auth.signOut()),
         ],
       ),
       body: ValueListenableBuilder<List<Map<String, dynamic>>>(
         valueListenable: postsNotifier,
         builder: (context, all, _) {
           final mine = all.where((p) => p['user_id'] == user?.id).toList();
-          return Column(
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 110),
             children: [
-              const SizedBox(height: 16),
-              const CircleAvatar(
-                  radius: 40, child: Icon(Icons.person, size: 40)),
-              const SizedBox(height: 8),
-              Text('@${currentUsername()}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(user?.email ?? ''),
-              const SizedBox(height: 12),
-              Text('${mine.length} posts',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(4),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 4,
-                    crossAxisSpacing: 4,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(children: [
+                  const CircleAvatar(
+                      radius: 40, child: Icon(Icons.person, size: 40)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('@${currentUsername()}',
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(user?.email ?? '',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Row(children: [
+                            Text('ID: $shortId',
+                                style:
+                                    const TextStyle(color: Colors.white70)),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.copy,
+                                size: 14, color: Colors.white70),
+                          ]),
+                          const SizedBox(height: 6),
+                          Wrap(spacing: 6, children: [
+                            _badge('0', Icons.shield, Colors.grey),
+                            _badge('1', Icons.add, Colors.green),
+                            _badge('BLv.1', Icons.diamond, Colors.orange),
+                            _badge('LV.1', Icons.hexagon, Colors.deepOrange),
+                          ]),
+                        ]),
                   ),
-                  itemCount: mine.length,
-                  itemBuilder: (_, i) {
-          final url = mine[i]['media_url'] as String?;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Container(color: colorFor('${mine[i]['id']}')),
-                if (url != null && url.isNotEmpty)
-                  Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, st) => const SizedBox(),
-                  ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.65),
-                        ],
-                        stops: const [0.5, 1.0],
-                      ),
+                  const Icon(Icons.chevron_right),
+                ]),
+              ),
+              GestureDetector(
+                onTap: () => _soon(context, 'Member'),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                      color: _glass, borderRadius: BorderRadius.circular(16)),
+                  child: Row(children: [
+                    const Text('Me+ ',
+                        style: TextStyle(
+                            color: kPink,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold)),
+                    const Text('Member',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                              colors: [Color(0xFF8E2DE2), kPink]),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: const Text('First Week  480',
+                          style: TextStyle(color: Colors.white)),
                     ),
-                  ),
+                  ]),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    '${mine[i]['caption']}',
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white),
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(children: [
+                  _stat(context, 'Fans', 0),
+                  _stat(context, 'Following', 0),
+                  _stat(context, 'Coins', 0),
+                  _stat(context, 'Diamond', 0),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(children: [
+                  _bigCard(context, 'Recharge', Icons.account_balance_wallet,
+                      const [Color(0xFF8E2DE2), kPink]),
+                  _bigCard(context, 'NVIP', Icons.workspace_premium,
+                      const [kPink, Color(0xFFFF8A5B)]),
+                  _bigCard(context, 'Game', Icons.sports_esports,
+                      const [Color(0xFF5B2BD1), Color(0xFF8E2DE2)]),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 20, 12, 0),
+                child: GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 0.85,
+                  children: grid
+                      .map((e) => GestureDetector(
+                            onTap: () => _soon(context, e.title),
+                            child: Column(children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                        colors: [Color(0xFF8E2DE2), kPink]),
+                                    borderRadius: BorderRadius.circular(16)),
+                                child: Icon(e.icon, color: Colors.white),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(e.title,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                            ]),
+                          ))
+                      .toList(),
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+              _group(context, const [
+                _ProfItem('League', Icons.emoji_events_outlined),
+                _ProfItem('My Subscribers', Icons.bookmark_add_outlined),
+                _ProfItem('My Subscriptions', Icons.subscriptions_outlined),
+                _ProfItem('FAM', Icons.family_restroom),
+                _ProfItem('Guardian', Icons.shield_outlined),
+                _ProfItem('My Companionship', Icons.favorite_border),
+                _ProfItem('Top Fans', Icons.star_border),
+                _ProfItem('Fans Group', Icons.groups_outlined),
+                _ProfItem('Visitor Records', Icons.person_search_outlined,
+                    tag: 'Me+ Gold'),
+                _ProfItem('History', Icons.history),
+              ]),
+              _group(context, const [
+                _ProfItem('Broadcast Data', Icons.bar_chart),
+                _ProfItem('Audience', Icons.people_outline),
+                _ProfItem('Replay', Icons.replay_circle_filled_outlined),
+                _ProfItem('My Agency', Icons.business_center_outlined),
+              ]),
+              _group(context, const [
+                _ProfItem('Feedback', Icons.headset_mic_outlined),
+              ]),
+              const SizedBox(height: 16),
+              Center(
+                child: Text('${mine.length} posts',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 8),
+              GridView.builder(
+                padding: const EdgeInsets.all(4),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
                 ),
+                itemCount: mine.length,
+                itemBuilder: (_, i) {
+                  final url = mine[i]['media_url'] as String?;
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Container(color: colorFor('${mine[i]['id']}')),
+                        if (url != null && url.isNotEmpty)
+                          Image.network(url,
+                              fit: BoxFit.cover,
+                              errorBuilder: (c, e, st) => const SizedBox()),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          alignment: Alignment.bottomLeft,
+                          child: Text('${mine[i]['caption']}',
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           );
@@ -916,6 +1133,13 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProfItem {
+  final String title;
+  final IconData icon;
+  final String? tag;
+  const _ProfItem(this.title, this.icon, {this.tag});
 }
 
 
