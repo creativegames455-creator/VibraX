@@ -865,16 +865,49 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisSpacing: 4,
                   ),
                   itemCount: mine.length,
-                  itemBuilder: (_, i) => Container(
-                    color: colorFor('${mine[i]['id']}'),
-                    padding: const EdgeInsets.all(6),
-                    alignment: Alignment.bottomLeft,
-                    child: Text(
-                      '${mine[i]['caption']}',
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
+                  itemBuilder: (_, i) {
+          final url = mine[i]['media_url'] as String?;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(color: colorFor('${mine[i]['id']}')),
+                if (url != null && url.isNotEmpty)
+                  Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, st) => const SizedBox(),
+                  ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                        stops: const [0.5, 1.0],
+                      ),
                     ),
                   ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    '${mine[i]['caption']}',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
                 ),
               ),
             ],
