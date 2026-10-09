@@ -122,60 +122,97 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  InputDecoration _deco(String label, IconData icon) => InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.white10,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.graphic_eq, size: 72),
-                const SizedBox(height: 12),
-                const Text(
-                  'VibraX',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 32),
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                      labelText: 'Email', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                      labelText: 'Password (6+ characters)',
-                      border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 20),
-                if (_loading)
-                  const Center(child: CircularProgressIndicator())
-                else ...[
-                  FilledButton(
-                    onPressed: () => _submit(false),
-                    child: const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text('Log in'),
-                    ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2A0A3D), Color(0xFF120816), Colors.black],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const VibraLogo(),
+                  const SizedBox(height: 44),
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: _deco('Email', Icons.mail_outline),
                   ),
-                  const SizedBox(height: 10),
-                  OutlinedButton(
-                    onPressed: () => _submit(true),
-                    child: const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text('Create account'),
-                    ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    decoration: _deco('Password (6+ characters)', Icons.lock_outline),
                   ),
+                  const SizedBox(height: 26),
+                  if (_loading)
+                    const Center(child: CircularProgressIndicator())
+                  else ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF2D87), Color(0xFF7C4DFF)],
+                        ),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66FF2D87),
+                            blurRadius: 20,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30),
+                          onTap: () => _submit(false),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text(
+                                'LOG IN',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 3,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => _submit(true),
+                      child: const Text('New here? Create account'),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -565,6 +602,59 @@ class ProfileScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class VibraLogo extends StatelessWidget {
+  const VibraLogo({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 104,
+          height: 104,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Color(0xFFFF2D87), Color(0xFF7C4DFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x80FF2D87),
+                blurRadius: 36,
+                spreadRadius: 3,
+              ),
+            ],
+          ),
+          child: const Icon(Icons.graphic_eq, size: 58, color: Colors.white),
+        ),
+        const SizedBox(height: 18),
+        ShaderMask(
+          shaderCallback: (rect) => const LinearGradient(
+            colors: [Color(0xFFFF2D87), Color(0xFFFFB86C), Color(0xFF7C4DFF)],
+          ).createShader(rect),
+          child: const Text(
+            'VibraX',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              fontStyle: FontStyle.italic,
+              letterSpacing: 4,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'FEEL THE VIBE',
+          style: TextStyle(fontSize: 12, letterSpacing: 7, color: Colors.white54),
+        ),
+      ],
     );
   }
 }
