@@ -26,8 +26,19 @@ Future<void> loadPosts() async {
 }
 
 Color colorFor(String key) {
-  final sum = key.codeUnits.fold<int>(0, (a, b) => a + b);
-  return Colors.primaries[sum % Colors.primaries.length].shade700;
+  const palette = [
+    Color(0xE6FF4FA3),
+    Color(0xE6D6329C),
+    Color(0xE6B026D6),
+    Color(0xE68E2DE2),
+    Color(0xE6E0407F),
+    Color(0xE6C2185B),
+  ];
+  var h = 0;
+  for (final c in key.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return palette[h % palette.length];
 }
 
 String currentUsername() {
