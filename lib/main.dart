@@ -788,72 +788,238 @@ class _PostCardState extends State<PostCard> {
   }
 }
 
-class DiscoverScreen extends StatelessWidget {
+class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
+  @override
+  State<DiscoverScreen> createState() => _DiscoverScreenState();
+}
+
+class _DiscoverScreenState extends State<DiscoverScreen> {
+  int _tab = 0;
+
+  void _soon(String t) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text('$t - coming soon')));
+
+  void _open(Map<String, dynamic> p) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+        body: PostCard(post: p),
+      ),
+    ));
+  }
+
+  Widget _header() {
+    const names = ['Live', 'Moments'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(children: [
+        for (var i = 0; i < names.length; i++)
+          GestureDetector(
+            onTap: () => setState(() => _tab = i),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(names[i],
+                    style: TextStyle(
+                        fontSize: _tab == i ? 28 : 24,
+                        fontWeight:
+                            _tab == i ? FontWeight.bold : FontWeight.w400,
+                        color: _tab == i ? Colors.white : Colors.white54)),
+                const SizedBox(height: 3),
+                Container(
+                  height: 4,
+                  width: _tab == i ? 30 : 0,
+                  decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFF8E2DE2), kPink]),
+                      borderRadius: BorderRadius.circular(4)),
+                ),
+              ]),
+            ),
+          ),
+        const Spacer(),
+        IconButton(
+            icon: const Icon(Icons.notifications_none, size: 30),
+            onPressed: () => _soon('Notifications')),
+        const SizedBox(width: 4),
+        GestureDetector(
+          onTap: () => _soon('Send'),
+          child: Container(
+            width: 70,
+            height: 46,
+            decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFF8E2DE2), kPink]),
+                borderRadius: BorderRadius.circular(24)),
+            child: const Icon(Icons.send_outlined, color: Colors.white),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _card(Map<String, dynamic> p) {
+    final url = p['media_url'] as String?;
+    return GestureDetector(
+      onTap: () => _open(p),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(fit: StackFit.expand, children: [
+          Container(color: colorFor('${p['id']}')),
+          if (url != null && url.isNotEmpty)
+            Image.network(url,
+                fit: BoxFit.cover,
+                errorBuilder: (c, e, st) => const SizedBox()),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.7)
+                  ],
+                  stops: const [0.55, 1.0],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: Row(children: [
+              Expanded(
+                child: Text('${p['username'] ?? 'user'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+              ),
+              const Icon(Icons.local_fire_department,
+                  size: 16, color: Colors.white54),
+              const SizedBox(width: 2),
+              Text('${p['likes'] ?? 0}',
+                  style: const TextStyle(color: Colors.white54)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _momentTile(Map<String, dynamic> p) {
+    final url = p['media_url'] as String?;
+    return GestureDetector(
+      onTap: () => _open(p),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(18)),
+        child: Row(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 70,
+              height: 70,
+              child: Stack(fit: StackFit.expand, children: [
+                Container(color: colorFor('${p['id']}')),
+                if (url != null && url.isNotEmpty)
+                  Image.network(url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, st) => const SizedBox()),
+              ]),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${p['username'] ?? 'user'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('${p['caption'] ?? ''}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70)),
+                ]),
+          ),
+          const Icon(Icons.local_fire_department, size: 18, color: kPink),
+          const SizedBox(width: 2),
+          Text('${p['likes'] ?? 0}',
+              style: const TextStyle(color: Colors.white70)),
+        ]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, title: const Text('Discover')),
-      body: ValueListenableBuilder<List<Map<String, dynamic>>>(
-        valueListenable: postsNotifier,
-        builder: (context, posts, _) {
-          if (posts.isEmpty) {
-            return const Center(child: Text('Nothing to discover yet'));
-          }
-          return GridView.builder(
-            padding: const EdgeInsets.all(8),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.75,
-            ),
-            itemCount: posts.length,
-            itemBuilder: (_, i) {
-          final url = posts[i]['media_url'] as String?;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Container(color: colorFor('${posts[i]['id']}')),
-                if (url != null && url.isNotEmpty)
-                  Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, e, st) => const SizedBox(),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: postsNotifier,
+          builder: (context, posts, _) {
+            return CustomScrollView(slivers: [
+              SliverToBoxAdapter(child: _header()),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
+                  child: Text(_tab == 0 ? 'Recommended' : 'Latest moments',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ),
+              if (posts.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: Text('No posts yet.')),
+                )
+              else if (_tab == 0)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 110),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _card(posts[i]),
+                      childCount: posts.length,
+                    ),
                   ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.65),
-                        ],
-                        stops: const [0.5, 1.0],
-                      ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 110),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _momentTile(posts[i]),
+                      childCount: posts.length,
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    '@${posts[i]['username'] ?? 'user'}\n${posts[i]['caption']}',
-                    maxLines: 4,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-          );
-        },
+            ]);
+          },
+        ),
       ),
     );
   }
