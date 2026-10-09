@@ -879,16 +879,21 @@ class LoginBackground extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
+        Image.asset(
+          'assets/login_bg.jpg',
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+        ),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFFB0306A),
-                Color(0xFF6A1B5C),
-                Color(0xFF2A0A33),
-                Color(0xFF0B0310),
+                Color(0xB3B0306A),
+                Color(0xB36A1B5C),
+                Color(0xCC2A0A33),
+                Color(0xE60B0310),
               ],
               stops: [0.0, 0.3, 0.65, 1.0],
             ),
@@ -965,74 +970,35 @@ class GlowWavePainter extends CustomPainter {
 class VibraLogo extends StatelessWidget {
   const VibraLogo({super.key});
 
-  Widget _bar(double h) => Container(
-        width: 8,
-        height: h,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: kPink,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: const [BoxShadow(color: Color(0x88FF4FA3), blurRadius: 10)],
-        ),
-      );
-
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _bar(34),
-            _bar(58),
-            const SizedBox(width: 6),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                ShaderMask(
-                  shaderCallback: (r) => const LinearGradient(
-                    colors: [Color(0xFFFF4FA3), Color(0xFFB026D6)],
-                  ).createShader(r),
-                  child: const Icon(Icons.favorite_border,
-                      size: 96, color: Colors.white),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Icon(Icons.play_arrow_rounded, size: 40, color: kPink),
-                ),
-              ],
-            ),
-            const SizedBox(width: 6),
-            _bar(58),
-            _bar(34),
-          ],
-        ),
-        const SizedBox(height: 6),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: 'Vibra',
-                style: GoogleFonts.pacifico(fontSize: 52, color: Colors.white),
-              ),
-              TextSpan(
-                text: 'X',
-                style: GoogleFonts.pacifico(
-                  fontSize: 52,
-                  color: kPink,
-                  shadows: const [
-                    Shadow(color: Color(0xAAFF4FA3), blurRadius: 18),
-                  ],
-                ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: kPink.withValues(alpha: 0.6),
+                blurRadius: 28,
+                spreadRadius: 2,
               ),
             ],
           ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: Image.asset(
+              'assets/logo.jpg',
+              width: 150,
+              height: 150,
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 10),
         Text(
-          'Connect  ♥  Share  ♥  Love',
+          'Connect ♥ Share ♥ Love',
           style: GoogleFonts.dancingScript(fontSize: 20, color: Colors.white),
         ),
       ],
