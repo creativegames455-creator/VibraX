@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 const supabaseUrl = 'https://rqsyygahmvfmmehbenan.supabase.co';
@@ -510,7 +512,14 @@ class _PostCardState extends State<PostCard> {
   Widget build(BuildContext context) {
     final p = widget.post;
     final color = colorFor('${p['id']}');
-    return Container(
+    final url = p['media_url'] as String?;
+    return Stack(fit: StackFit.expand, children: [
+      if (url != null && url.isNotEmpty)
+        Positioned.fill(
+          child: Image.network(url, fit: BoxFit.cover,
+              errorBuilder: (c, e, st) => const SizedBox()),
+        ),
+      Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xDD0B0310)]),
       ),
@@ -547,7 +556,7 @@ class _PostCardState extends State<PostCard> {
           ],
         ),
       ),
-    );
+    )]);
   }
 }
 
@@ -601,6 +610,17 @@ class CreateScreen extends StatefulWidget {
 class _CreateScreenState extends State<CreateScreen> {
   final _controller = TextEditingController();
   bool _busy = false;
+  Uint8List? _bytes; // VIBRAX_PHOTO
+
+  Future<void> _pick() async {
+    final x = await ImagePicker().pickImage(
+        source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    if (x == null) return;
+    final bytes = await x.readAsBytes();
+    if (!mounted) return;
+    setState(() => _bytes = bytes);
+  }
+
 
   @override
   void dispose() {
@@ -615,16 +635,25 @@ class _CreateScreenState extends State<CreateScreen> {
 
   Future<void> _post() async {
     final caption = _controller.text.trim();
-    if (caption.isEmpty) {
+    if (caption.isEmpty && _bytes == null) {
       _msg('Write a caption first');
       return;
     }
     setState(() => _busy = true);
     try {
+      String? mediaUrl;
+      if (_bytes != null) {
+        final uid = supabase.auth.currentUser!.id;
+        final name = '$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await supabase.storage.from('media').uploadBinary(name, _bytes!,
+            fileOptions: const FileOptions(contentType: 'image/jpeg'));
+        mediaUrl = supabase.storage.from('media').getPublicUrl(name);
+      }
       await supabase
           .from('posts')
-          .insert({'caption': caption, 'username': currentUsername()});
+          .insert({'caption': caption, 'username': currentUsername(), 'media_url': mediaUrl});
       _controller.clear();
+      setState(() => _bytes = null);
       await loadPosts();
       _msg('Posted!');
     } catch (e) {
@@ -639,16 +668,36 @@ class _CreateScreenState extends State<CreateScreen> {
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, title: const Text('Create')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: ListView(
           children: [
             Container(
-              height: 160,
+              height: 220,
               width: double.infinity,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.white24),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(child: Icon(Icons.video_call, size: 56)),
+              child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _pick,
+              child: _bytes == null
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              size: 56, color: kPink),
+                          SizedBox(height: 6),
+                          Text('Tap to choose a photo'),
+                        ],
+                      ),
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(_bytes!,
+                          fit: BoxFit.cover, width: double.infinity),
+                    ),
+            ),
             ),
             const SizedBox(height: 16),
             TextField(
