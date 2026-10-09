@@ -700,19 +700,57 @@ class _CreateScreenState extends State<CreateScreen> {
             ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _controller,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Write a caption',
-                border: OutlineInputBorder(),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(color: kPink.withOpacity(0.35), blurRadius: 18, spreadRadius: 1),
+                ],
+              ),
+              child: TextField(
+                controller: _controller,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white),
+                cursorColor: kPink,
+                decoration: InputDecoration(
+                  labelText: 'Write a caption',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  floatingLabelStyle: TextStyle(color: kPink),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.25),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(color: kPink, width: 1.5),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(color: kPink, width: 2.5),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _busy ? null : _post,
-              icon: const Icon(Icons.send),
-              label: Text(_busy ? 'Posting...' : 'Post'),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(color: kPink.withOpacity(0.6), blurRadius: 22, spreadRadius: 1),
+                ],
+              ),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: kPink,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(56),
+                  shape: const StadiumBorder(),
+                ),
+                onPressed: _busy ? null : _post,
+                icon: const Icon(Icons.send),
+                label: Text(
+                  _busy ? 'Posting...' : 'Post',
+                  style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
+                ),
+              ),
             ),
           ],
         ),
