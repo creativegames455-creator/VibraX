@@ -674,9 +674,12 @@ class _CreateScreenState extends State<CreateScreen> {
               height: 220,
               width: double.infinity,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white24),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              border: Border.all(color: kPink, width: 1.5),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: kPink.withValues(alpha: 0.35), blurRadius: 18, spreadRadius: 1),
+              ],
+            ),
               child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _pick,
@@ -693,7 +696,7 @@ class _CreateScreenState extends State<CreateScreen> {
                       ),
                     )
                   : ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(22),
                       child: Image.memory(_bytes!,
                           fit: BoxFit.cover, width: double.infinity),
                     ),
