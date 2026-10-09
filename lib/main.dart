@@ -796,6 +796,7 @@ class DiscoverScreen extends StatefulWidget {
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
   int _tab = 0;
+  int _mchip = 0;
 
   void _soon(String t) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text('$t - coming soon')));
@@ -912,6 +913,47 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  Widget _momentChips() {
+    const names = ['Trending', 'Video', 'Paid', 'Following'];
+    return SizedBox(
+      height: 56,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        itemCount: names.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (c, i) {
+          final sel = i == _mchip;
+          return GestureDetector(
+            onTap: () => setState(() => _mchip = i),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              decoration: BoxDecoration(
+                  gradient: sel
+                      ? const LinearGradient(
+                          colors: [Color(0xFF8E2DE2), kPink])
+                      : null,
+                  color: sel ? null : Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(30)),
+              child: Row(children: [
+                if (i == 0) ...[
+                  const Icon(Icons.local_fire_department,
+                      size: 18, color: Colors.white),
+                  const SizedBox(width: 4),
+                ],
+                Text(names[i],
+                    style: TextStyle(
+                        color: sel ? Colors.white : Colors.white70,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500)),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _momentTile(Map<String, dynamic> p) {
     final url = p['media_url'] as String?;
     return GestureDetector(
@@ -975,6 +1017,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           builder: (context, posts, _) {
             return CustomScrollView(slivers: [
               SliverToBoxAdapter(child: _header()),
+              if (_tab == 1) SliverToBoxAdapter(child: _momentChips()),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
