@@ -1867,14 +1867,12 @@ class VibraLogo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
+          // neon_logo
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
-              BoxShadow(
-                color: kPink.withValues(alpha: 0.6),
-                blurRadius: 28,
-                spreadRadius: 2,
-              ),
+              BoxShadow(color: kPink.withValues(alpha: 0.55), blurRadius: 34, spreadRadius: 2),
+              BoxShadow(color: const Color(0xFF8E2DE2).withValues(alpha: 0.5), blurRadius: 60, spreadRadius: 6),
             ],
           ),
           child: ClipRRect(
