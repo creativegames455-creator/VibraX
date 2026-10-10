@@ -1880,7 +1880,7 @@ class VibraLogo extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(32),
             child: Image.asset(
-              'assets/logo.jpg',
+              'assets/logo.png',
               width: 150,
               height: 150,
               fit: BoxFit.cover,
