@@ -903,8 +903,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         GestureDetector(
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => Scaffold(
-                    appBar: AppBar(
-                        backgroundColor: Colors.transparent, elevation: 0),
                     body: const CreateScreen(),
                   ))),
           child: Container(
@@ -1241,100 +1239,198 @@ class _CreateScreenState extends State<CreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canPost =
+        !_busy && (_bytes != null || _controller.text.trim().isNotEmpty);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0, centerTitle: true, title: const Text('Create')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Container(
-              height: 220,
-              width: double.infinity,
-              decoration: BoxDecoration(
-              border: Border.all(color: kPink, width: 1.5),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(color: kPink.withValues(alpha: 0.35), blurRadius: 18, spreadRadius: 1),
-              ],
-            ),
-              child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _chooseMedia,
-              child: _bytes == null
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_photo_alternate_outlined,
-                              size: 56, color: kPink),
-                          SizedBox(height: 6),
-                          Text('Tap to choose a photo'),
-                        ],
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+            child: Row(children: [
+              IconButton(
+                  icon: const Icon(Icons.arrow_back, size: 28),
+                  onPressed: () => Navigator.of(context).maybePop()),
+              const Expanded(
+                child: Center(
+                  child: Text('New Moment',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ),
+              GestureDetector(
+                onTap: canPost ? _post : null,
+                child: Container(
+                  width: 70,
+                  height: 46,
+                  decoration: BoxDecoration(
+                      gradient: canPost
+                          ? const LinearGradient(
+                              colors: [Color(0xFF8E2DE2), kPink])
+                          : null,
+                      color: canPost ? null : Colors.white24,
+                      borderRadius: BorderRadius.circular(24)),
+                  child: _busy
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Icon(Icons.send_outlined,
+                          color: canPost ? Colors.white : Colors.white54),
+                ),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Colors.white24,
+                        child: Icon(Icons.person, color: Colors.white),
                       ),
-                    )
-                  : ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                      child: _isVideo ? const Center(child: Icon(Icons.videocam, size: 64, color: kPink)) : Image.memory(_bytes!,
-                          fit: BoxFit.cover, width: double.infinity),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text('${currentUsername()}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ]),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _controller,
+                      minLines: 4,
+                      maxLines: null,
+                      onChanged: (_) => setState(() {}),
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 18),
+                      decoration: const InputDecoration(
+                        hintText: "What's on your mind?",
+                        hintStyle:
+                            TextStyle(color: Colors.white54, fontSize: 18),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                      ),
                     ),
+                    if (_bytes != null) ...[
+                      const SizedBox(height: 12),
+                      Stack(children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: _isVideo
+                              ? Container(
+                                  height: 180,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF5B2BD1),
+                                            Color(0xFF8E2DE2),
+                                            kPink
+                                          ])),
+                                  child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.play_circle_fill,
+                                            size: 64, color: Colors.white),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                            'Video ready  -  ${(_bytes!.length / 1048576).toStringAsFixed(1)} MB',
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16)),
+                                      ]),
+                                )
+                              : Image.memory(_bytes!,
+                                  height: 260,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => setState(() {
+                              _bytes = null;
+                              _isVideo = false;
+                            }),
+                            child: const CircleAvatar(
+                              radius: 16,
+                              backgroundColor: Colors.black54,
+                              child: Icon(Icons.close,
+                                  size: 18, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ],
+                  ]),
             ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(color: kPink.withOpacity(0.35), blurRadius: 18, spreadRadius: 1),
-                ],
-              ),
-              child: TextField(
-                controller: _controller,
-                maxLines: 3,
-                style: const TextStyle(color: Colors.white),
-                cursorColor: kPink,
-                decoration: InputDecoration(
-                  labelText: 'Write a caption',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  floatingLabelStyle: TextStyle(color: kPink),
-                  filled: true,
-                  fillColor: Colors.black.withOpacity(0.25),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: kPink, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: kPink, width: 2.5),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [
-                  BoxShadow(color: kPink.withOpacity(0.6), blurRadius: 22, spreadRadius: 1),
-                ],
-              ),
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: kPink,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(56),
-                  shape: const StadiumBorder(),
-                ),
-                onPressed: _busy ? null : _post,
-                icon: const Icon(Icons.send),
-                label: Text(
-                  _busy ? 'Posting...' : 'Post',
-                  style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          _momentBar(),
+        ]),
       ),
+    );
+  }
+
+  Widget _momentBar() {
+    Widget chip(String t, IconData? ic) => GestureDetector(
+          onTap: () => _msg('$t - coming soon'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(26)),
+            child: Row(children: [
+              if (ic != null) ...[
+                Icon(ic, size: 20, color: const Color(0xFFFFC107)),
+                const SizedBox(width: 6),
+              ],
+              Text(t,
+                  style: const TextStyle(color: Colors.white, fontSize: 17)),
+            ]),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+      child: Row(children: [
+        chip('@Friends', null),
+        const SizedBox(width: 10),
+        chip('Paid', Icons.monetization_on),
+        const Spacer(),
+        GestureDetector(
+          onTap: _busy ? null : _chooseMedia,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+                gradient:
+                    const LinearGradient(colors: [Color(0xFF8E2DE2), kPink]),
+                borderRadius: BorderRadius.circular(26)),
+            child: const Row(children: [
+              Icon(Icons.photo_library_outlined, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Album',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ),
+      ]),
     );
   }
 }
