@@ -462,16 +462,19 @@ class _MainShellState extends State<MainShell> {
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(_index == i ? selIcons[i] : icons[i],
+Container(
+  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+  decoration: BoxDecoration(
+    color: _index == i ? const Color(0x66FF4FA3) : Colors.transparent,
+    borderRadius: BorderRadius.circular(20)),
+  child:                             Icon(_index == i ? selIcons[i] : icons[i],
                                 color:
-                                    _index == i ? kPink : Colors.white70),
+                                    _index == i ? Colors.white : Colors.white70)),
                             const SizedBox(height: 4),
                             Text(labels[i],
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: _index == i
-                                        ? kPink
-                                        : Colors.white70)),
+                                    color: _index == i ? Colors.white : Colors.white70)),
                           ],
                         ),
                 ),
