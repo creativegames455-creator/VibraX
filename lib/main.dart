@@ -1137,7 +1137,53 @@ class CreateScreen extends StatefulWidget {
 class _CreateScreenState extends State<CreateScreen> {
   final _controller = TextEditingController();
   bool _busy = false;
-  Uint8List? _bytes; // VIBRAX_PHOTO
+  Uint8List? _bytes;
+  bool _isVideo = false; // VIBRAX_PHOTO
+
+  Future<void> _pickVideo() async {
+    final x = await ImagePicker().pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(seconds: 60));
+    if (x == null) return;
+    final len = await x.length();
+    if (len > 50 * 1024 * 1024) {
+      _msg('Video 50 MB se chhoti honi chahiye');
+      return;
+    }
+    final bytes = await x.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _bytes = bytes;
+      _isVideo = true;
+    });
+  }
+
+  void _chooseMedia() {
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.photo),
+            title: const Text('Photo'),
+            onTap: () {
+              Navigator.pop(c);
+              setState(() => _isVideo = false);
+              _pick();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.videocam),
+            title: const Text('Video'),
+            onTap: () {
+              Navigator.pop(c);
+              _pickVideo();
+            },
+          ),
+        ]),
+      ),
+    );
+  }
 
   Future<void> _pick() async {
     final x = await ImagePicker().pickImage(
@@ -1171,16 +1217,19 @@ class _CreateScreenState extends State<CreateScreen> {
       String? mediaUrl;
       if (_bytes != null) {
         final uid = supabase.auth.currentUser!.id;
-        final name = '$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final name = '$uid/${DateTime.now().millisecondsSinceEpoch}.${_isVideo ? 'mp4' : 'jpg'}';
         await supabase.storage.from('media').uploadBinary(name, _bytes!,
-            fileOptions: const FileOptions(contentType: 'image/jpeg'));
+            fileOptions: FileOptions(contentType: _isVideo ? 'video/mp4' : 'image/jpeg'));
         mediaUrl = supabase.storage.from('media').getPublicUrl(name);
       }
       await supabase
           .from('posts')
-          .insert({'caption': caption, 'username': currentUsername(), 'media_url': mediaUrl});
+          .insert({'caption': caption, 'username': currentUsername(), 'media_url': mediaUrl, 'media_type': _bytes == null ? null : (_isVideo ? 'video' : 'image')});
       _controller.clear();
-      setState(() => _bytes = null);
+      setState(() {
+        _bytes = null;
+        _isVideo = false;
+      });
       await loadPosts();
       _msg('Posted!');
     } catch (e) {
@@ -1209,7 +1258,7 @@ class _CreateScreenState extends State<CreateScreen> {
             ),
               child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: _pick,
+              onTap: _chooseMedia,
               child: _bytes == null
                   ? const Center(
                       child: Column(
@@ -1224,7 +1273,7 @@ class _CreateScreenState extends State<CreateScreen> {
                     )
                   : ClipRRect(
                 borderRadius: BorderRadius.circular(22),
-                      child: Image.memory(_bytes!,
+                      child: _isVideo ? const Center(child: Icon(Icons.videocam, size: 64, color: kPink)) : Image.memory(_bytes!,
                           fit: BoxFit.cover, width: double.infinity),
                     ),
             ),
