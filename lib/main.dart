@@ -408,33 +408,85 @@ class _MainShellState extends State<MainShell> {
     loadPosts();
   }
 
+  Widget _footer() {
+    const labels = ['Home', 'Discover', 'Live', 'Message', 'Profile'];
+    const icons = [
+      Icons.home_outlined,
+      Icons.explore_outlined,
+      Icons.videocam,
+      Icons.chat_bubble_outline,
+      Icons.person_outline,
+    ];
+    const selIcons = [
+      Icons.home,
+      Icons.explore,
+      Icons.videocam,
+      Icons.chat_bubble,
+      Icons.person,
+    ];
+    return Container(
+      color: const Color(0xE6120414),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 72,
+          child: Row(children: [
+            for (var i = 0; i < 5; i++)
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _index = i),
+                  child: i == 2
+                      ? Center(
+                          child: Transform.translate(
+                            offset: const Offset(0, -6),
+                            child: Container(
+                              width: 68,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                    colors: [Color(0xFF8E2DE2), kPink]),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: kPink.withValues(alpha: 0.5),
+                                      blurRadius: 14)
+                                ],
+                              ),
+                              child: Icon(Icons.videocam,
+                                  color: Colors.white,
+                                  size: _index == 2 ? 34 : 30),
+                            ),
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_index == i ? selIcons[i] : icons[i],
+                                color:
+                                    _index == i ? kPink : Colors.white70),
+                            const SizedBox(height: 4),
+                            Text(labels[i],
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: _index == i
+                                        ? kPink
+                                        : Colors.white70)),
+                          ],
+                        ),
+                ),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(backgroundColor: const Color(0xE6120414), indicatorColor: const Color(0x66FF4FA3), 
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Home'),
-          NavigationDestination(
-              icon: Icon(Icons.explore_outlined),
-              selectedIcon: Icon(Icons.explore),
-              label: 'Discover'),
-          NavigationDestination(
-              icon: Icon(Icons.add_circle_outline),
-              selectedIcon: Icon(Icons.add_circle),
-              label: 'Create'),
-          NavigationDestination(icon: Icon(Icons.sensors), label: 'Live'),
-          NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile'),
-        ],
-      ),
+      bottomNavigationBar: _footer(),
     );
   }
 }
