@@ -397,8 +397,8 @@ class _MainShellState extends State<MainShell> {
   static const _pages = [
     HomeScreen(),
     DiscoverScreen(),
-    CreateScreen(),
     LiveScreen(),
+    MessageScreen(),
     ProfileScreen(),
   ];
 
@@ -900,7 +900,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             onPressed: () => _soon('Notifications')),
         const SizedBox(width: 4),
         GestureDetector(
-          onTap: () => _soon('Send'),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => Scaffold(
+                    appBar: AppBar(
+                        backgroundColor: Colors.transparent, elevation: 0),
+                    body: const CreateScreen(),
+                  ))),
           child: Container(
             width: 70,
             height: 46,
@@ -1781,6 +1786,114 @@ class VibraLogo extends StatelessWidget {
           style: GoogleFonts.dancingScript(fontSize: 20, color: Colors.white),
         ),
       ],
+    );
+  }
+}
+
+
+class MessageScreen extends StatelessWidget {
+  const MessageScreen({super.key});
+
+  void _soon(BuildContext c, String t) => ScaffoldMessenger.of(c)
+      .showSnackBar(SnackBar(content: Text('$t - coming soon')));
+
+  Widget _feature(BuildContext c, String title, IconData icon,
+      List<Color> colors) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _soon(c, title),
+        child: Container(
+          height: 110,
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+              gradient: LinearGradient(
+                  colors: colors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(22)),
+          child: Stack(children: [
+            Text(title,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            Positioned(
+                right: 0,
+                bottom: 0,
+                child: Icon(icon, size: 44, color: Colors.white70)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('Chat',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              _feature(context, 'Free Call', Icons.video_call,
+                  const [Color(0xFF8E2DE2), Color(0xFFB44CFF)]),
+              _feature(context, 'Mood bubble', Icons.bubble_chart,
+                  const [Color(0xFFFF8A65), kPink]),
+              _feature(context, 'Secret note', Icons.lock_outline,
+                  const [Color(0xFF2B2640), Color(0xFF4A3F6B)]),
+            ]),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => _soon(context, "Who's viewed me"),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20)),
+                child: const Row(children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.visibility_outlined,
+                        color: Colors.white, size: 28),
+                  ),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Who's viewed me",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold)),
+                          SizedBox(height: 4),
+                          Text('0 people viewed your profile',
+                              style: TextStyle(color: Colors.white70)),
+                        ]),
+                  ),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 40),
+            const Center(
+              child: Text('No messages yet.',
+                  style: TextStyle(color: Colors.white54, fontSize: 16)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
