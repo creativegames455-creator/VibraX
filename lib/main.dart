@@ -680,7 +680,15 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(fit: StackFit.expand, children: [
           Container(color: colorFor('${p['id']}')),
           if (url != null && url.isNotEmpty)
-            (p['media_type'] == 'video' ? const Center(child: Icon(Icons.play_circle_fill, size: 40, color: Colors.white70)) : Image.network(url,
+            (p['media_type'] == 'video' ? Stack(fit: StackFit.expand, children: [
+              if ((p['thumbnail_url'] ?? '') != '')
+                Image.network('${p['thumbnail_url']}',
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, st) => const SizedBox()),
+              const Center(
+                  child: Icon(Icons.play_circle_fill,
+                      size: 40, color: Colors.white70)),
+            ]) : Image.network(url,
                 fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox())),
           Positioned.fill(
             child: DecoratedBox(
@@ -929,7 +937,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: Stack(fit: StackFit.expand, children: [
           Container(color: colorFor('${p['id']}')),
           if (url != null && url.isNotEmpty)
-            (p['media_type'] == 'video' ? const Center(child: Icon(Icons.play_circle_fill, size: 40, color: Colors.white70)) : Image.network(url,
+            (p['media_type'] == 'video' ? Stack(fit: StackFit.expand, children: [
+              if ((p['thumbnail_url'] ?? '') != '')
+                Image.network('${p['thumbnail_url']}',
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, st) => const SizedBox()),
+              const Center(
+                  child: Icon(Icons.play_circle_fill,
+                      size: 40, color: Colors.white70)),
+            ]) : Image.network(url,
                 fit: BoxFit.cover,
                 errorBuilder: (c, e, st) => const SizedBox())),
           Positioned.fill(
@@ -1033,7 +1049,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: Stack(fit: StackFit.expand, children: [
                 Container(color: colorFor('${p['id']}')),
                 if (url != null && url.isNotEmpty)
-                  (p['media_type'] == 'video' ? const Center(child: Icon(Icons.play_circle_fill, size: 40, color: Colors.white70)) : Image.network(url,
+                  (p['media_type'] == 'video' ? Stack(fit: StackFit.expand, children: [
+              if ((p['thumbnail_url'] ?? '') != '')
+                Image.network('${p['thumbnail_url']}',
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, st) => const SizedBox()),
+              const Center(
+                  child: Icon(Icons.play_circle_fill,
+                      size: 40, color: Colors.white70)),
+            ]) : Image.network(url,
                       fit: BoxFit.cover,
                       errorBuilder: (c, e, st) => const SizedBox())),
               ]),
@@ -1138,13 +1162,20 @@ class _CreateScreenState extends State<CreateScreen> {
   final _controller = TextEditingController();
   bool _busy = false;
   Uint8List? _bytes;
-  bool _isVideo = false; // VIBRAX_PHOTO
+  bool _isVideo = false;
+  Uint8List? _thumb; // VIBRAX_PHOTO
 
   Future<void> _pickVideo() async {
     final x = await ImagePicker().pickVideo(
         source: ImageSource.gallery,
         maxDuration: const Duration(seconds: 60));
     if (x == null) return;
+    try {
+      _thumb = await VideoCompress.getByteThumbnail(x.path,
+          quality: 70, position: -1);
+    } catch (_) {
+      _thumb = null;
+    }
     setState(() => _busy = true);
     _msg('Video compress ho rahi hai, thora intezar karein...');
     try {
@@ -1232,16 +1263,24 @@ class _CreateScreenState extends State<CreateScreen> {
     setState(() => _busy = true);
     try {
       String? mediaUrl;
+      String? thumbUrl;
       if (_bytes != null) {
         final uid = supabase.auth.currentUser!.id;
         final name = '$uid/${DateTime.now().millisecondsSinceEpoch}.${_isVideo ? 'mp4' : 'jpg'}';
         await supabase.storage.from('media').uploadBinary(name, _bytes!,
             fileOptions: FileOptions(contentType: _isVideo ? 'video/mp4' : 'image/jpeg'));
         mediaUrl = supabase.storage.from('media').getPublicUrl(name);
+        if (_isVideo && _thumb != null) {
+          final tname =
+              '$uid/${DateTime.now().millisecondsSinceEpoch}_thumb.jpg';
+          await supabase.storage.from('media').uploadBinary(tname, _thumb!,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'));
+          thumbUrl = supabase.storage.from('media').getPublicUrl(tname);
+        }
       }
       await supabase
           .from('posts')
-          .insert({'caption': caption, 'username': currentUsername(), 'media_url': mediaUrl, 'media_type': _bytes == null ? null : (_isVideo ? 'video' : 'image')});
+          .insert({'caption': caption, 'username': currentUsername(), 'media_url': mediaUrl, 'thumbnail_url': thumbUrl, 'media_type': _bytes == null ? null : (_isVideo ? 'video' : 'image')});
       _controller.clear();
       setState(() {
         _bytes = null;
