@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 const supabaseUrl = 'https://rqsyygahmvfmmehbenan.supabase.co';
@@ -678,8 +679,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(fit: StackFit.expand, children: [
           Container(color: colorFor('${p['id']}')),
           if (url != null && url.isNotEmpty)
-            Image.network(url,
-                fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox()),
+            (p['media_type'] == 'video' ? const Center(child: Icon(Icons.play_circle_fill, size: 40, color: Colors.white70)) : Image.network(url,
+                fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox())),
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -799,8 +800,8 @@ class _PostCardState extends State<PostCard> {
     return Stack(fit: StackFit.expand, children: [
       if (url != null && url.isNotEmpty)
         Positioned.fill(
-          child: Image.network(url, fit: BoxFit.cover,
-              errorBuilder: (c, e, st) => const SizedBox()),
+          child: (p['media_type'] == 'video' ? _VideoBox(url: url) : Image.network(url, fit: BoxFit.cover,
+              errorBuilder: (c, e, st) => const SizedBox())),
         ),
       Container(
       decoration: BoxDecoration(
@@ -929,9 +930,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: Stack(fit: StackFit.expand, children: [
           Container(color: colorFor('${p['id']}')),
           if (url != null && url.isNotEmpty)
-            Image.network(url,
+            (p['media_type'] == 'video' ? const Center(child: Icon(Icons.play_circle_fill, size: 40, color: Colors.white70)) : Image.network(url,
                 fit: BoxFit.cover,
-                errorBuilder: (c, e, st) => const SizedBox()),
+                errorBuilder: (c, e, st) => const SizedBox())),
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -1033,9 +1034,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: Stack(fit: StackFit.expand, children: [
                 Container(color: colorFor('${p['id']}')),
                 if (url != null && url.isNotEmpty)
-                  Image.network(url,
+                  (p['media_type'] == 'video' ? const Center(child: Icon(Icons.play_circle_fill, size: 40, color: Colors.white70)) : Image.network(url,
                       fit: BoxFit.cover,
-                      errorBuilder: (c, e, st) => const SizedBox()),
+                      errorBuilder: (c, e, st) => const SizedBox())),
               ]),
             ),
           ),
@@ -1902,6 +1903,59 @@ class MessageScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white54, fontSize: 16)),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class _VideoBox extends StatefulWidget {
+  final String url;
+  const _VideoBox({required this.url});
+  @override
+  State<_VideoBox> createState() => _VideoBoxState();
+}
+
+class _VideoBoxState extends State<_VideoBox> {
+  late final VideoPlayerController _c;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _c.setLooping(true);
+    _c.initialize().then((_) {
+      if (!mounted) return;
+      setState(() => _ready = true);
+      _c.play();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return GestureDetector(
+      onTap: () => setState(() {
+        _c.value.isPlaying ? _c.pause() : _c.play();
+      }),
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _c.value.size.width,
+            height: _c.value.size.height,
+            child: VideoPlayer(_c),
+          ),
         ),
       ),
     );
