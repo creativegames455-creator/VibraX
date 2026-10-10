@@ -1139,7 +1139,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 110),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, i) => _momentTile(posts[i]),
+                      (context, i) => _MomentFeedCard(
+                        key: ValueKey('${posts[i]['id']}'),
+                        post: posts[i],
+                        onOpen: () => _open(posts[i])),
                       childCount: posts.length,
                     ),
                   ),
@@ -2127,6 +2130,526 @@ class _VideoBoxState extends State<_VideoBox> {
             child: VideoPlayer(_c),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class _MomentFeedCard extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final VoidCallback onOpen;
+  const _MomentFeedCard({super.key, required this.post, required this.onOpen});
+  @override
+  State<_MomentFeedCard> createState() => _MomentFeedCardState();
+}
+
+class _MomentFeedCardState extends State<_MomentFeedCard> {
+  String? _avatar;
+  int _likes = 0;
+  int _comments = 0;
+  bool _liked = false;
+  bool _following = false;
+
+  String get _id => '${widget.post['id']}';
+  String? get _owner => widget.post['user_id'] as String?;
+  String? get _me => supabase.auth.currentUser?.id;
+  bool get _mine => _owner != null && _owner == _me;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _msg(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _load() async {
+    try {
+      final l = await supabase.from('post_likes').select('user_id').eq('post_id', _id);
+      final c = await supabase.from('comments').select('id').eq('post_id', _id);
+      String? av;
+      bool fol = false;
+      if (_owner != null) {
+        final pr = await supabase.from('profiles').select('avatar_url').eq('id', _owner!).maybeSingle();
+        av = pr?['avatar_url'] as String?;
+        if (_me != null && !_mine) {
+          final f = await supabase
+              .from('follows')
+              .select('follower_id')
+              .eq('follower_id', _me!)
+              .eq('following_id', _owner!);
+          fol = f.isNotEmpty;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _likes = l.length;
+        _comments = c.length;
+        _liked = l.any((e) => e['user_id'] == _me);
+        _avatar = av;
+        _following = fol;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _toggleLike() async {
+    final me = _me;
+    if (me == null) return;
+    final was = _liked;
+    setState(() {
+      _liked = !was;
+      _likes += was ? -1 : 1;
+    });
+    try {
+      if (was) {
+        await supabase.from('post_likes').delete().eq('post_id', _id).eq('user_id', me);
+      } else {
+        await supabase.from('post_likes').insert({'post_id': _id, 'user_id': me});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _liked = was;
+        _likes += was ? 1 : -1;
+      });
+      _msg('Like nahi hua: $e');
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    final me = _me;
+    final o = _owner;
+    if (me == null || o == null) return;
+    final was = _following;
+    setState(() => _following = !was);
+    try {
+      if (was) {
+        await supabase.from('follows').delete().eq('follower_id', me).eq('following_id', o);
+      } else {
+        await supabase.from('follows').insert({'follower_id': me, 'following_id': o});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _following = was);
+      _msg('Follow nahi hua: $e');
+    }
+  }
+
+  String _ago() {
+    final t = DateTime.tryParse('${widget.post['created_at'] ?? ''}');
+    if (t == null) return '';
+    final d = DateTime.now().difference(t.toLocal());
+    if (d.inDays >= 1) return '${d.inDays} days ago';
+    if (d.inHours >= 1) return '${d.inHours} h ago';
+    if (d.inMinutes >= 1) return '${d.inMinutes} min ago';
+    return 'just now';
+  }
+
+  void _menu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: const Text('Report'),
+            onTap: () {
+              Navigator.pop(c);
+              _msg('Report - coming soon');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.block),
+            title: const Text('Block user'),
+            onTap: () {
+              Navigator.pop(c);
+              _msg('Block - coming soon');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: const Text('Share link'),
+            onTap: () {
+              Navigator.pop(c);
+              _msg('Share - coming soon');
+            },
+          ),
+          if (_mine)
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(c);
+                _confirmDelete();
+              },
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Post delete karein?'),
+        content: const Text('Ye wapas nahi hoga.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final del = await supabase.from('posts').delete().eq('id', _id).select();
+      if (del.isEmpty) {
+        _msg('Delete ki ijazat nahi mili');
+        return;
+      }
+      final paths = <String>[];
+      for (final k in ['media_url', 'thumbnail_url']) {
+        final u = widget.post[k] as String?;
+        if (u != null && u.contains('/media/')) {
+          paths.add(Uri.decodeComponent(u.split('/media/').last.split('?').first));
+        }
+      }
+      if (paths.isNotEmpty) {
+        try {
+          await supabase.storage.from('media').remove(paths);
+        } catch (_) {}
+      }
+      await loadPosts();
+      _msg('Post delete ho gayi');
+    } catch (e) {
+      _msg('Delete nahi hui: $e');
+    }
+  }
+
+  void _openComments() {
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+            builder: (_) => _PostDetail(post: widget.post, avatar: _avatar, ago: _ago())))
+        .then((_) => _load());
+  }
+
+  Widget _act(IconData ic, String n, VoidCallback onTap, {Color color = Colors.white}) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Row(children: [
+        Icon(ic, size: 27, color: color),
+        const SizedBox(width: 7),
+        Text(n, style: const TextStyle(color: Colors.white, fontSize: 17)),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.post;
+    final isVideo = p['media_type'] == 'video';
+    final shown = (isVideo ? p['thumbnail_url'] : p['media_url']) as String?;
+    final hasMedia = isVideo || (shown != null && shown.isNotEmpty);
+    final caption = '${p['caption'] ?? ''}';
+    final name = '${p['username'] ?? 'user'}';
+    final hasAv = _avatar != null && _avatar!.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(22)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 4, 8),
+          child: Row(children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: colorFor('${p['user_id'] ?? name}'),
+              backgroundImage: hasAv ? NetworkImage(_avatar!) : null,
+              child: hasAv
+                  ? null
+                  : Text(name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(_ago(), style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              ]),
+            ),
+            if (!_mine && _owner != null)
+              GestureDetector(
+                onTap: _toggleFollow,
+                child: Container(
+                  width: 62,
+                  height: 38,
+                  decoration: BoxDecoration(
+                      gradient: _following
+                          ? null
+                          : const LinearGradient(colors: [Color(0xFF8E2DE2), kPink]),
+                      color: _following ? Colors.white24 : null,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Icon(_following ? Icons.check : Icons.add, color: Colors.white),
+                ),
+              ),
+            IconButton(icon: const Icon(Icons.more_vert, color: Colors.white), onPressed: _menu),
+          ]),
+        ),
+        if (caption.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: Text(caption, style: const TextStyle(color: Colors.white, fontSize: 17)),
+          ),
+        if (hasMedia)
+          GestureDetector(
+            onTap: widget.onOpen,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  height: 320,
+                  width: double.infinity,
+                  child: Stack(fit: StackFit.expand, children: [
+                    Container(color: colorFor('${p['id']}')),
+                    if (shown != null && shown.isNotEmpty)
+                      Image.network(shown,
+                          fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox()),
+                    if (isVideo)
+                      const Center(
+                          child: Icon(Icons.play_circle_fill, size: 60, color: Colors.white70)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            _act(_liked ? Icons.favorite : Icons.favorite_border, '$_likes', _toggleLike,
+                color: _liked ? kPink : Colors.white),
+            _act(Icons.chat_bubble_outline, '$_comments', _openComments),
+            _act(Icons.share_outlined, '0', () => _msg('Share - coming soon')),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _PostDetail extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final String? avatar;
+  final String ago;
+  const _PostDetail({required this.post, this.avatar, required this.ago});
+  @override
+  State<_PostDetail> createState() => _PostDetailState();
+}
+
+class _PostDetailState extends State<_PostDetail> {
+  final _ctl = TextEditingController();
+  List<Map<String, dynamic>> _items = [];
+  bool _sending = false;
+  String get _id => '${widget.post['id']}';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _msg(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await supabase
+          .from('comments')
+          .select()
+          .eq('post_id', _id)
+          .order('created_at', ascending: true);
+      if (!mounted) return;
+      setState(() => _items = List<Map<String, dynamic>>.from(r));
+    } catch (_) {}
+  }
+
+  Future<void> _send() async {
+    final t = _ctl.text.trim();
+    final me = supabase.auth.currentUser?.id;
+    if (t.isEmpty || _sending) return;
+    if (me == null) {
+      _msg('Pehle login karein');
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      await supabase.from('comments').insert({
+        'post_id': _id,
+        'user_id': me,
+        'username': '${currentUsername()}',
+        'body': t,
+      });
+      _ctl.clear();
+      await _load();
+    } catch (e) {
+      _msg('Comment nahi hua: $e');
+    }
+    if (mounted) setState(() => _sending = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.post;
+    final isVideo = p['media_type'] == 'video';
+    final url = p['media_url'] as String?;
+    final name = '${p['username'] ?? 'user'}';
+    final caption = '${p['caption'] ?? ''}';
+    final hasAv = widget.avatar != null && widget.avatar!.isNotEmpty;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+            child: Row(children: [
+              IconButton(
+                  icon: const Icon(Icons.arrow_back, size: 28),
+                  onPressed: () => Navigator.of(context).maybePop()),
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: colorFor('${p['user_id'] ?? name}'),
+                backgroundImage: hasAv ? NetworkImage(widget.avatar!) : null,
+                child: hasAv
+                    ? null
+                    : Text(name.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(color: Colors.white)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(widget.ago, style: const TextStyle(color: Colors.white54)),
+                ]),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: ListView(padding: const EdgeInsets.fromLTRB(14, 6, 14, 12), children: [
+              if (url != null && url.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    height: 320,
+                    width: double.infinity,
+                    child: isVideo
+                        ? _VideoBox(url: url)
+                        : Image.network(url,
+                            fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox()),
+                  ),
+                ),
+              if (caption.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(caption, style: const TextStyle(color: Colors.white, fontSize: 17)),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
+                child: Text('Comments (${_items.length})',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+              ),
+              if (_items.isEmpty)
+                const Text('Pehla comment karein', style: TextStyle(color: Colors.white54)),
+              for (final c in _items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: colorFor('${c['user_id']}'),
+                      child: Text('${c['username'] ?? 'u'}'.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(color: Colors.white)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${c['username'] ?? 'user'}',
+                            style: const TextStyle(
+                                color: Colors.white70, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text('${c['body']}',
+                            style: const TextStyle(color: Colors.white, fontSize: 16)),
+                      ]),
+                    ),
+                  ]),
+                ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+            child: Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _ctl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Say something...',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(26), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(26), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(26), borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _send,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                  decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF8E2DE2), kPink]),
+                      borderRadius: BorderRadius.circular(26)),
+                  child: _sending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Send',
+                          style: TextStyle(
+                              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ]),
+          ),
+        ]),
       ),
     );
   }
