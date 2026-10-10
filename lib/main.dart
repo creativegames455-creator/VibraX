@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_compress/video_compress.dart';
 import 'package:video_player/video_player.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -1144,17 +1145,34 @@ class _CreateScreenState extends State<CreateScreen> {
         source: ImageSource.gallery,
         maxDuration: const Duration(seconds: 60));
     if (x == null) return;
-    final len = await x.length();
-    if (len > 50 * 1024 * 1024) {
-      _msg('Video 50 MB se chhoti honi chahiye');
-      return;
+    setState(() => _busy = true);
+    _msg('Video compress ho rahi hai, thora intezar karein...');
+    try {
+      final info = await VideoCompress.compressVideo(
+        x.path,
+        quality: VideoQuality.MediumQuality,
+        deleteOrigin: false,
+        includeAudio: true,
+      );
+      final path = info?.path ?? x.path;
+      final f = XFile(path);
+      final len = await f.length();
+      if (len > 50 * 1024 * 1024) {
+        _msg('Compress ke baad bhi video 50 MB se bari hai. Chhoti video chunein');
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+      final bytes = await f.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _bytes = bytes;
+        _isVideo = true;
+        _busy = false;
+      });
+    } catch (e) {
+      _msg('Video compress nahi hui: $e');
+      if (mounted) setState(() => _busy = false);
     }
-    final bytes = await x.readAsBytes();
-    if (!mounted) return;
-    setState(() {
-      _bytes = bytes;
-      _isVideo = true;
-    });
   }
 
   void _chooseMedia() {
