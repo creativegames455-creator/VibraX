@@ -1584,46 +1584,7 @@ class ProfileScreen extends StatelessWidget {
                 _ProfItem('Feedback', Icons.headset_mic_outlined),
               ]),
               const SizedBox(height: 16),
-              Center(
-                child: Text('${mine.length} posts',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 8),
-              GridView.builder(
-                padding: const EdgeInsets.all(4),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 4,
-                  crossAxisSpacing: 4,
-                ),
-                itemCount: mine.length,
-                itemBuilder: (_, i) {
-                  final url = mine[i]['media_url'] as String?;
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Container(color: colorFor('${mine[i]['id']}')),
-                        if (url != null && url.isNotEmpty)
-                          Image.network(url,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, st) => const SizedBox()),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          alignment: Alignment.bottomLeft,
-                          child: Text('${mine[i]['caption']}',
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              
             ],
           );
         },
