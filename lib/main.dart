@@ -1888,9 +1888,28 @@ class VibraLogo extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          'Connect ♥ Share ♥ Love',
-          style: GoogleFonts.dancingScript(fontSize: 20, color: Colors.white),
+        Text.rich(
+          // neon_tag
+          TextSpan(
+            style: GoogleFonts.dancingScript(fontSize: 22, color: Colors.white),
+            children: [
+              TextSpan(text: 'Connect '),
+              WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Icon(Icons.favorite, size: 24, color: kPink, shadows: [
+              Shadow(color: kPink, blurRadius: 14),
+              Shadow(color: Color(0xFF8E2DE2), blurRadius: 26),
+            ])),
+              TextSpan(text: ' Share '),
+              WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Icon(Icons.favorite, size: 24, color: kPink, shadows: [
+              Shadow(color: kPink, blurRadius: 14),
+              Shadow(color: Color(0xFF8E2DE2), blurRadius: 26),
+            ])),
+              TextSpan(text: ' Love'),
+            ],
+          ),
         ),
       ],
     );
