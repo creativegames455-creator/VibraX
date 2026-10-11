@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1720,13 +1721,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  String _sid = '';
+
   Future<void> _loadMe() async {
     final u = supabase.auth.currentUser;
     if (u == null) return;
     try {
       final pr = await supabase
           .from('profiles')
-          .select('avatar_url')
+          .select('avatar_url, short_id')
           .eq('id', u.id)
           .maybeSingle();
       final w = await supabase
@@ -1745,6 +1748,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       setState(() {
         _avatar = pr?['avatar_url'] as String?;
+        _sid = '${pr?['short_id'] ?? ''}';
         _coins = ((w?['coins'] ?? 0) as num).toInt();
         _diamonds = ((w?['diamonds'] ?? 0) as num).toInt();
         _fans = fa.length;
@@ -1856,7 +1860,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = supabase.auth.currentUser;
     final uid = user?.id ?? '';
-    final shortId = uid.length >= 9 ? uid.substring(0, 9) : uid;
+    final shortId = _sid.isNotEmpty
+        ? _sid
+        : (uid.length >= 9 ? uid.substring(0, 9) : uid);
     const grid = [
       _ProfItem('Transaction History', Icons.receipt_long),
       _ProfItem('VIP Center', Icons.diamond_outlined),
@@ -1921,8 +1927,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 style:
                                     const TextStyle(color: Colors.white70)),
                             const SizedBox(width: 6),
-                            const Icon(Icons.copy,
-                                size: 14, color: Colors.white70),
+                            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: shortId));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('ID copied'),
+                    duration: Duration(seconds: 1)));
+              },
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.copy, size: 14, color: Colors.white70),
+              ),
+            ),
                           ]),
                           const SizedBox(height: 6),
                           Wrap(spacing: 6, children: [
@@ -4058,6 +4075,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   int _fans = 0;
   int _following = 0;
   int _level = 1;
+  String _sid = '';
   bool _isF = false;
   bool _busy = false;
   List<Map<String, dynamic>> _posts = [];
@@ -4077,7 +4095,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       final pr = await supabase
           .from('profiles')
-          .select('username, avatar_url, level')
+          .select('username, avatar_url, level, short_id')
           .eq('id', id)
           .maybeSingle();
       final fa = await supabase
@@ -4103,6 +4121,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _avatar = (pr?['avatar_url'] as String?) ?? _avatar;
         _name = '${pr?['username'] ?? _name}';
         _level = ((pr?['level'] ?? 1) as num).toInt();
+        _sid = '${pr?['short_id'] ?? ''}';
         _fans = fa.length;
         _following = fg.length;
         _isF = isF;
@@ -4219,9 +4238,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     final me = _me;
     final mine = me == widget.userId;
-    final shortId = widget.userId.length >= 8
-        ? widget.userId.substring(0, 8)
-        : widget.userId;
+    final shortId = _sid.isNotEmpty
+        ? _sid
+        : (widget.userId.length >= 8
+            ? widget.userId.substring(0, 8)
+            : widget.userId);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
