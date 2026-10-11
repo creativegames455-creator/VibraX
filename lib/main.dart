@@ -1805,10 +1805,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 gradient: LinearGradient(colors: g),
                 borderRadius: BorderRadius.circular(16)),
             child: Stack(children: [
-              Text(t,
+              Text(t, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold)),
               Align(
                   alignment: Alignment.bottomRight,
@@ -1939,11 +1939,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: TextStyle(
                             color: kPink,
                             fontStyle: FontStyle.italic,
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold)),
                     const Text('Member',
                         style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold)),
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
