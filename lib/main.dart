@@ -1709,6 +1709,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadMe();
+    _pTimer = Timer.periodic(const Duration(seconds: 6), (_) => _loadMe());
+  }
+
+  Timer? _pTimer;
+
+  @override
+  void dispose() {
+    _pTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadMe() async {
@@ -2848,6 +2857,19 @@ class _PostDetailState extends State<_PostDetail> {
   }
 
   Widget _av(String? url, String? name, String uid, double rad) {
+    return GestureDetector(
+      onTap: () => _openUser(uid, name, url),
+      child: _avRaw(url, name, uid, rad),
+    );
+  }
+
+  void _openUser(String uid, String? name, String? url) {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => UserProfileScreen(
+            userId: uid, name: name ?? 'user', avatar: url)));
+  }
+
+  Widget _avRaw(String? url, String? name, String uid, double rad) {
     final has = url != null && url.isNotEmpty;
     final n = (name == null || name.isEmpty) ? 'u' : name;
     return CircleAvatar(
@@ -3010,7 +3032,7 @@ class _PostDetailState extends State<_PostDetail> {
       try {
         list = List<Map<String, dynamic>>.from(await supabase
             .from('comments')
-            .select('*, profiles(username, avatar_url)')
+            .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
             .eq('post_id', _id)
             .order('created_at', ascending: true));
       } catch (_) {
@@ -3091,7 +3113,9 @@ class _PostDetailState extends State<_PostDetail> {
               IconButton(
                   icon: const Icon(Icons.arrow_back, size: 28),
                   onPressed: () => Navigator.of(context).maybePop()),
-              CircleAvatar(
+              GestureDetector(
+                onTap: () => _openUser('${p['user_id']}', name, widget.avatar),
+                child: CircleAvatar(
                 radius: 22,
                 backgroundColor: colorFor('${p['user_id'] ?? name}'),
                 backgroundImage: hasAv ? NetworkImage(widget.avatar!) : null,
@@ -3099,7 +3123,7 @@ class _PostDetailState extends State<_PostDetail> {
                     ? null
                     : Text(name.substring(0, 1).toUpperCase(),
                         style: const TextStyle(color: Colors.white)),
-              ),
+              )),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -4014,5 +4038,261 @@ class _ConvListState extends State<_ConvList> {
           ),
         ),
     ]);
+  }
+}
+
+
+class UserProfileScreen extends StatefulWidget {
+  final String userId;
+  final String name;
+  final String? avatar;
+  const UserProfileScreen(
+      {super.key, required this.userId, required this.name, this.avatar});
+  @override
+  State<UserProfileScreen> createState() => _UserProfileScreenState();
+}
+
+class _UserProfileScreenState extends State<UserProfileScreen> {
+  String? _avatar;
+  String _name = '';
+  int _fans = 0;
+  int _following = 0;
+  int _level = 1;
+  bool _isF = false;
+  bool _busy = false;
+  List<Map<String, dynamic>> _posts = [];
+  String? get _me => supabase.auth.currentUser?.id;
+
+  @override
+  void initState() {
+    super.initState();
+    _avatar = widget.avatar;
+    _name = widget.name;
+    _load();
+  }
+
+  Future<void> _load() async {
+    final id = widget.userId;
+    final me = _me;
+    try {
+      final pr = await supabase
+          .from('profiles')
+          .select('username, avatar_url, level')
+          .eq('id', id)
+          .maybeSingle();
+      final fa = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', id);
+      final fg = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', id);
+      var isF = false;
+      if (me != null && me != id) {
+        final r = await supabase
+            .from('follows')
+            .select('follower_id')
+            .eq('follower_id', me)
+            .eq('following_id', id)
+            .maybeSingle();
+        isF = r != null;
+      }
+      if (!mounted) return;
+      setState(() {
+        _avatar = (pr?['avatar_url'] as String?) ?? _avatar;
+        _name = '${pr?['username'] ?? _name}';
+        _level = ((pr?['level'] ?? 1) as num).toInt();
+        _fans = fa.length;
+        _following = fg.length;
+        _isF = isF;
+      });
+    } catch (_) {}
+    try {
+      final ps = await supabase
+          .from('posts')
+          .select()
+          .eq('user_id', id)
+          .order('created_at', ascending: false)
+          .limit(60);
+      if (!mounted) return;
+      setState(() => _posts = List<Map<String, dynamic>>.from(ps));
+    } catch (_) {}
+  }
+
+  Future<void> _toggle() async {
+    final me = _me;
+    if (me == null || me == widget.userId || _busy) return;
+    final was = _isF;
+    setState(() {
+      _busy = true;
+      _isF = !was;
+      _fans += was ? -1 : 1;
+    });
+    try {
+      if (was) {
+        await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', me)
+            .eq('following_id', widget.userId);
+      } else {
+        await supabase
+            .from('follows')
+            .insert({'follower_id': me, 'following_id': widget.userId});
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isF = was;
+          _fans += was ? 1 : -1;
+        });
+      }
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Widget _stat(String label, int v) => Expanded(
+        child: Column(children: [
+          Text('$v',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(color: Colors.white70)),
+        ]),
+      );
+
+  Widget _btn(String label, IconData icon, bool filled, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+            gradient: filled
+                ? const LinearGradient(colors: [Color(0xFF8E2DE2), kPink])
+                : null,
+            color: filled ? null : Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(24)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _tile(Map<String, dynamic> p) {
+    final isVideo = p['media_type'] == 'video';
+    final url = (isVideo ? p['thumbnail_url'] : p['media_url']) as String?;
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => _PostDetail(
+              post: p, avatar: _avatar, ago: _agoText(p['created_at'])))),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(fit: StackFit.expand, children: [
+          if (url != null && url.isNotEmpty)
+            Image.network(url,
+                fit: BoxFit.cover, errorBuilder: (c, e, st) => const SizedBox())
+          else
+            Container(color: Colors.white.withValues(alpha: 0.1)),
+          if (isVideo)
+            const Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.play_circle_fill,
+                        color: Colors.white, size: 22))),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final me = _me;
+    final mine = me == widget.userId;
+    final shortId = widget.userId.length >= 8
+        ? widget.userId.substring(0, 8)
+        : widget.userId;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            children: [
+              Row(children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, size: 28),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+              ]),
+              Center(child: _chatAv(_avatar, _name, widget.userId, 46)),
+              const SizedBox(height: 12),
+              Center(
+                child: Text('@$_name',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text('ID: $shortId',
+                    style: const TextStyle(color: Colors.white54)),
+              ),
+              const SizedBox(height: 16),
+              Row(children: [
+                _stat('Fans', _fans),
+                _stat('Following', _following),
+                _stat('Level', _level),
+              ]),
+              const SizedBox(height: 16),
+              if (!mine && me != null)
+                Row(children: [
+                  Expanded(
+                      child: _btn(_isF ? 'Following' : 'Follow',
+                          _isF ? Icons.check : Icons.add, !_isF, _toggle)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: _btn(
+                          'Message',
+                          Icons.chat_bubble_outline,
+                          false,
+                          () => Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => ChatScreen(
+                                  peerId: widget.userId,
+                                  peerName: _name,
+                                  peerAvatar: _avatar))))),
+                ]),
+              const SizedBox(height: 20),
+              const Text('Moments',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              if (_posts.isEmpty)
+                const Text('Abhi koi post nahi',
+                    style: TextStyle(color: Colors.white54))
+              else
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  children: [for (final p in _posts) _tile(p)],
+                ),
+            ]),
+      ),
+    );
   }
 }
