@@ -995,7 +995,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         GestureDetector(
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => Scaffold(
-                    body: const CreateScreen(),
+                    body: CreateScreen(
+                mode: _tab == 1 ? (_mchip == 0 ? 1 : (_mchip == 1 ? 2 : 0)) : 0),
                   ))),
           child: Container(
             width: 70,
@@ -1302,7 +1303,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 }
 
 class CreateScreen extends StatefulWidget {
-  const CreateScreen({super.key});
+  const CreateScreen({super.key, this.mode = 0});
+  final int mode;
   @override
   State<CreateScreen> createState() => _CreateScreenState();
 }
@@ -1313,6 +1315,22 @@ class _CreateScreenState extends State<CreateScreen> {
   Uint8List? _bytes;
   bool _isVideo = false;
   Uint8List? _thumb; // VIBRAX_PHOTO
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.mode != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.mode == 1) {
+          setState(() => _isVideo = false);
+          _pick();
+        } else {
+          _pickVideo();
+        }
+      });
+    }
+  }
 
   Future<void> _pickVideo() async {
     final x = await ImagePicker().pickVideo(
