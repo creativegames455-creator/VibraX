@@ -75,10 +75,14 @@ class VibraXApp extends StatelessWidget {
     return MaterialApp(
       title: 'VibraX',
       debugShowCheckedModeBanner: false,
-      builder: (context, child) => Stack(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.noScaling),
+        child: Stack(
           fit: StackFit.expand,
           children: [const LoginBackground(), if (child != null) child],
         ),
+      ),
         theme: ThemeData(
         scaffoldBackgroundColor: Colors.transparent, // VIBRAX_INNER
 
