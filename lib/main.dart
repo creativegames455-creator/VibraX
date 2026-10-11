@@ -862,6 +862,77 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen> {
   int _tab = 0;
   int _mchip = 0;
+  Set<String> _followingIds = {};
+  Map<String, int> _likeCounts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChipData();
+  }
+
+  Future<void> _loadChipData() async {
+    try {
+      if (_mchip == 0) {
+        final r = await supabase.from('post_likes').select('post_id');
+        final m = <String, int>{};
+        for (final e in r) {
+          final k = '${e['post_id']}';
+          m[k] = (m[k] ?? 0) + 1;
+        }
+        if (!mounted) return;
+        setState(() => _likeCounts = m);
+      } else if (_mchip == 3) {
+        final me = supabase.auth.currentUser?.id;
+        if (me == null) return;
+        final r = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', me);
+        if (!mounted) return;
+        setState(() =>
+            _followingIds = r.map<String>((e) => '${e['following_id']}').toSet());
+      }
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> _filtered(List<Map<String, dynamic>> all) {
+    if (_tab != 1) return all;
+    switch (_mchip) {
+      case 1:
+        return all.where((p) => p['media_type'] == 'video').toList();
+      case 2:
+        return <Map<String, dynamic>>[];
+      case 3:
+        return all
+            .where((p) => _followingIds.contains('${p['user_id']}'))
+            .toList();
+      default:
+        final l = List<Map<String, dynamic>>.from(all);
+        l.sort((a, b) {
+          final c = (_likeCounts['${b['id']}'] ?? 0)
+              .compareTo(_likeCounts['${a['id']}'] ?? 0);
+          if (c != 0) return c;
+          return '${b['created_at']}'.compareTo('${a['created_at']}');
+        });
+        return l;
+    }
+  }
+
+  String _emptyText() {
+    if (_tab != 1) return 'No posts yet.';
+    switch (_mchip) {
+      case 1:
+        return 'Abhi koi video nahi hai';
+      case 2:
+        return 'Paid moments - coming soon';
+      case 3:
+        return 'Aap ne abhi kisi ko follow nahi kiya';
+      default:
+        return 'No posts yet.';
+    }
+  }
+
 
   void _soon(String t) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text('$t - coming soon')));
@@ -1001,7 +1072,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         itemBuilder: (c, i) {
           final sel = i == _mchip;
           return GestureDetector(
-            onTap: () => setState(() => _mchip = i),
+            onTap: () {
+              setState(() => _mchip = i);
+              _loadChipData();
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
@@ -1098,7 +1172,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       body: SafeArea(
         child: ValueListenableBuilder<List<Map<String, dynamic>>>(
           valueListenable: postsNotifier,
-          builder: (context, posts, _) {
+          builder: (context, allPosts, _) {
+            final posts = _filtered(allPosts);
             return CustomScrollView(slivers: [
               SliverToBoxAdapter(child: _header()),
               if (_tab == 1) SliverToBoxAdapter(child: _momentChips()),
@@ -1113,9 +1188,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               ),
               if (posts.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: Text('No posts yet.')),
+                  child: Center(child: Text(_emptyText())),
                 )
               else if (_tab == 0)
                 SliverPadding(
