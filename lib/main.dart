@@ -873,7 +873,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Future<void> _loadChipData() async {
     try {
-      if (_mchip == 0) {
+      if (_mchip == 0 || _mchip == 1) {
         final r = await supabase.from('post_likes').select('post_id');
         final m = <String, int>{};
         for (final e in r) {
@@ -1165,6 +1165,49 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  Widget _videoTile(List<Map<String, dynamic>> list, int i) {
+    final p = list[i];
+    final thumb = p['thumbnail_url'] as String?;
+    final n = _likeCounts['${p['id']}'] ?? 0;
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => _VideoPager(posts: list, start: i))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(fit: StackFit.expand, children: [
+              Container(color: colorFor('${p['id']}')),
+              if (thumb != null && thumb.isNotEmpty)
+                Image.network(thumb,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, st) => const SizedBox()),
+              const Center(
+                  child: Icon(Icons.play_circle_fill,
+                      size: 40, color: Colors.white70)),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: Row(children: [
+                  const Icon(Icons.favorite_border,
+                      size: 16, color: Colors.white),
+                  const SizedBox(width: 3),
+                  Text('$n',
+                      style: const TextStyle(color: Colors.white, fontSize: 13)),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text('${p['caption'] ?? ''}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 15)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1209,8 +1252,24 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     ),
                   ),
                 )
-              else
+              else if (_mchip == 1)
                 SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 110),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.66,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _videoTile(posts, i),
+                      childCount: posts.length,
+                    ),
+                  ),
+                )
+              else SliverPadding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 110),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
@@ -2676,6 +2735,25 @@ class _PostDetailState extends State<_PostDetail> {
                         const SizedBox(height: 2),
                         Text('${c['body']}',
                             style: const TextStyle(color: Colors.white, fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          Text(_agoText(c['created_at']),
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 13)),
+                          const SizedBox(width: 18),
+                          GestureDetector(
+                            onTap: () {
+                              _ctl.text = '@${c['username']} ';
+                              _ctl.selection = TextSelection.collapsed(
+                                  offset: _ctl.text.length);
+                            },
+                            child: const Text('Reply',
+                                style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ]),
                       ]),
                     ),
                   ]),
@@ -2727,5 +2805,463 @@ class _PostDetailState extends State<_PostDetail> {
         ]),
       ),
     );
+  }
+}
+
+
+String _agoText(dynamic v) {
+  final t = DateTime.tryParse('${v ?? ''}');
+  if (t == null) return '';
+  final d = DateTime.now().difference(t.toLocal());
+  if (d.inDays >= 1) return '${d.inDays} days ago';
+  if (d.inHours >= 1) return '${d.inHours} hours ago';
+  if (d.inMinutes >= 1) return '${d.inMinutes} min ago';
+  return 'just now';
+}
+
+Future<String?> _deletePostEverywhere(Map<String, dynamic> post) async {
+  try {
+    final del =
+        await supabase.from('posts').delete().eq('id', '${post['id']}').select();
+    if (del.isEmpty) return 'Delete ki ijazat nahi mili';
+    final paths = <String>[];
+    for (final k in ['media_url', 'thumbnail_url']) {
+      final u = post[k] as String?;
+      if (u != null && u.contains('/media/')) {
+        paths.add(Uri.decodeComponent(u.split('/media/').last.split('?').first));
+      }
+    }
+    if (paths.isNotEmpty) {
+      try {
+        await supabase.storage.from('media').remove(paths);
+      } catch (_) {}
+    }
+    await loadPosts();
+    return null;
+  } catch (e) {
+    return 'Delete nahi hui: $e';
+  }
+}
+
+class _VideoPager extends StatefulWidget {
+  final List<Map<String, dynamic>> posts;
+  final int start;
+  const _VideoPager({required this.posts, required this.start});
+  @override
+  State<_VideoPager> createState() => _VideoPagerState();
+}
+
+class _VideoPagerState extends State<_VideoPager> {
+  late final PageController _pc;
+  int _cur = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cur = widget.start;
+    _pc = PageController(initialPage: widget.start);
+  }
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: PageView.builder(
+        controller: _pc,
+        scrollDirection: Axis.vertical,
+        itemCount: widget.posts.length,
+        onPageChanged: (i) => setState(() => _cur = i),
+        itemBuilder: (c, i) => _VideoPage(
+          key: ValueKey('${widget.posts[i]['id']}'),
+          post: widget.posts[i],
+          active: i == _cur,
+          onDeleted: () => Navigator.of(context).maybePop(),
+        ),
+      ),
+    );
+  }
+}
+
+class _VideoPage extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final bool active;
+  final VoidCallback onDeleted;
+  const _VideoPage(
+      {super.key,
+      required this.post,
+      required this.active,
+      required this.onDeleted});
+  @override
+  State<_VideoPage> createState() => _VideoPageState();
+}
+
+class _VideoPageState extends State<_VideoPage> {
+  VideoPlayerController? _c;
+  bool _ready = false;
+  bool _paused = false;
+  int _likes = 0;
+  int _comments = 0;
+  bool _liked = false;
+  bool _following = false;
+  String? _avatar;
+
+  String get _id => '${widget.post['id']}';
+  String? get _owner => widget.post['user_id'] as String?;
+  String? get _me => supabase.auth.currentUser?.id;
+  bool get _mine => _owner != null && _owner == _me;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+    _load();
+  }
+
+  void _initVideo() {
+    final url = widget.post['media_url'] as String?;
+    if (url == null || url.isEmpty) return;
+    final c = VideoPlayerController.networkUrl(Uri.parse(url));
+    _c = c;
+    c.setLooping(true);
+    c.initialize().then((_) {
+      if (!mounted) return;
+      setState(() => _ready = true);
+      if (widget.active) c.play();
+    }).catchError((_) {});
+  }
+
+  @override
+  void didUpdateWidget(covariant _VideoPage old) {
+    super.didUpdateWidget(old);
+    if (old.active != widget.active) {
+      if (widget.active && !_paused) _c?.play();
+      if (!widget.active) _c?.pause();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c?.dispose();
+    super.dispose();
+  }
+
+  void _msg(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _load() async {
+    try {
+      final l =
+          await supabase.from('post_likes').select('user_id').eq('post_id', _id);
+      final c = await supabase.from('comments').select('id').eq('post_id', _id);
+      String? av;
+      bool fol = false;
+      if (_owner != null) {
+        final pr = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', _owner!)
+            .maybeSingle();
+        av = pr?['avatar_url'] as String?;
+        if (_me != null && !_mine) {
+          final f = await supabase
+              .from('follows')
+              .select('follower_id')
+              .eq('follower_id', _me!)
+              .eq('following_id', _owner!);
+          fol = f.isNotEmpty;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _likes = l.length;
+        _comments = c.length;
+        _liked = l.any((e) => e['user_id'] == _me);
+        _avatar = av;
+        _following = fol;
+      });
+    } catch (_) {}
+  }
+
+  void _toggle() {
+    final c = _c;
+    if (c == null || !_ready) return;
+    final playing = c.value.isPlaying;
+    setState(() => _paused = playing);
+    playing ? c.pause() : c.play();
+  }
+
+  Future<void> _toggleLike() async {
+    final me = _me;
+    if (me == null) return;
+    final was = _liked;
+    setState(() {
+      _liked = !was;
+      _likes += was ? -1 : 1;
+    });
+    try {
+      if (was) {
+        await supabase
+            .from('post_likes')
+            .delete()
+            .eq('post_id', _id)
+            .eq('user_id', me);
+      } else {
+        await supabase.from('post_likes').insert({'post_id': _id, 'user_id': me});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _liked = was;
+        _likes += was ? 1 : -1;
+      });
+      _msg('Like nahi hua: $e');
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    final me = _me;
+    final o = _owner;
+    if (me == null || o == null) return;
+    final was = _following;
+    setState(() => _following = !was);
+    try {
+      if (was) {
+        await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', me)
+            .eq('following_id', o);
+      } else {
+        await supabase
+            .from('follows')
+            .insert({'follower_id': me, 'following_id': o});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _following = was);
+      _msg('Follow nahi hua: $e');
+    }
+  }
+
+  Future<void> _openComments() async {
+    _c?.pause();
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => _PostDetail(
+            post: widget.post,
+            avatar: _avatar,
+            ago: _agoText(widget.post['created_at']))));
+    if (!mounted) return;
+    if (widget.active && !_paused) _c?.play();
+    _load();
+  }
+
+  void _menu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: const Text('Report'),
+            onTap: () {
+              Navigator.pop(c);
+              _msg('Report - coming soon');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.block),
+            title: const Text('Block user'),
+            onTap: () {
+              Navigator.pop(c);
+              _msg('Block - coming soon');
+            },
+          ),
+          if (_mine)
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: const Text('Delete',
+                  style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(c);
+                _confirmDelete();
+              },
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Post delete karein?'),
+        content: const Text('Ye wapas nahi hoga.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final err = await _deletePostEverywhere(widget.post);
+    if (err != null) {
+      _msg(err);
+      return;
+    }
+    widget.onDeleted();
+  }
+
+  Widget _side(IconData ic, String label, VoidCallback onTap,
+      {Color color = Colors.white}) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(children: [
+          Icon(ic, size: 34, color: color),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.post;
+    final name = '${p['username'] ?? 'user'}';
+    final caption = '${p['caption'] ?? ''}';
+    final thumb = p['thumbnail_url'] as String?;
+    final hasAv = _avatar != null && _avatar!.isNotEmpty;
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final c = _c;
+    return Stack(fit: StackFit.expand, children: [
+      Container(color: Colors.black),
+      if (_ready && c != null)
+        GestureDetector(
+          onTap: _toggle,
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: c.value.size.width,
+                height: c.value.size.height,
+                child: VideoPlayer(c),
+              ),
+            ),
+          ),
+        )
+      else ...[
+        if (thumb != null && thumb.isNotEmpty)
+          Image.network(thumb,
+              fit: BoxFit.contain, errorBuilder: (c, e, st) => const SizedBox()),
+        const Center(child: CircularProgressIndicator()),
+      ],
+      if (_paused)
+        const IgnorePointer(
+            child: Center(
+                child: Icon(Icons.play_arrow, size: 80, color: Colors.white54))),
+      Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
+            child: Row(children: [
+              Expanded(
+                child: Row(children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: colorFor('${p['user_id'] ?? name}'),
+                    backgroundImage: hasAv ? NetworkImage(_avatar!) : null,
+                    child: hasAv
+                        ? null
+                        : Text(name.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white)),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 8),
+                  if (!_mine && _owner != null)
+                    GestureDetector(
+                      onTap: _toggleFollow,
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                            gradient: _following
+                                ? null
+                                : const LinearGradient(
+                                    colors: [Color(0xFF8E2DE2), kPink]),
+                            color: _following ? Colors.white24 : null,
+                            shape: BoxShape.circle),
+                        child: Icon(_following ? Icons.check : Icons.add,
+                            size: 20, color: Colors.white),
+                      ),
+                    ),
+                ]),
+              ),
+              IconButton(
+                  icon: const Icon(Icons.more_horiz, color: Colors.white),
+                  onPressed: _menu),
+              IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).maybePop()),
+            ]),
+          ),
+        ),
+      ),
+      Positioned(
+        right: 12,
+        bottom: bottom + 70,
+        child: Column(children: [
+          _side(_liked ? Icons.favorite : Icons.favorite_border, '$_likes',
+              _toggleLike,
+              color: _liked ? kPink : Colors.white),
+          _side(Icons.chat_bubble_outline, '$_comments', _openComments),
+          _side(Icons.reply, '0', () => _msg('Share - coming soon')),
+          _side(Icons.monetization_on, 'Reward',
+              () => _msg('Reward - coming soon'),
+              color: const Color(0xFFFFC107)),
+        ]),
+      ),
+      if (caption.isNotEmpty)
+        Positioned(
+          left: 16,
+          right: 90,
+          bottom: bottom + 40,
+          child: Text(caption,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 17)),
+        ),
+    ]);
   }
 }
