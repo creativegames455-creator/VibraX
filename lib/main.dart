@@ -2703,6 +2703,76 @@ class _PostDetailState extends State<_PostDetail> {
   bool _sending = false;
   String get _id => '${widget.post['id']}';
 
+  bool _following = false;
+  bool _fBusy = false;
+  String get _authorId => '${widget.post['user_id']}';
+
+  Future<void> _loadFollow() async {
+    final me = supabase.auth.currentUser?.id;
+    if (me == null || me == _authorId) return;
+    try {
+      final r = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('follower_id', me)
+          .eq('following_id', _authorId)
+          .maybeSingle();
+      if (!mounted) return;
+      setState(() => _following = r != null);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFollow() async {
+    final me = supabase.auth.currentUser?.id;
+    if (me == null) {
+      _msg('Pehle login karein');
+      return;
+    }
+    if (_fBusy) return;
+    final was = _following;
+    setState(() {
+      _fBusy = true;
+      _following = !was;
+    });
+    try {
+      if (was) {
+        await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', me)
+            .eq('following_id', _authorId);
+      } else {
+        await supabase
+            .from('follows')
+            .insert({'follower_id': me, 'following_id': _authorId});
+      }
+    } catch (e) {
+      if (mounted) setState(() => _following = was);
+      _msg('Follow nahi hua: $e');
+    }
+    if (mounted) setState(() => _fBusy = false);
+  }
+
+  Widget _followBtn() {
+    final me = supabase.auth.currentUser?.id;
+    if (me == null || me == _authorId) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: _toggleFollow,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+            gradient: _following
+                ? null
+                : const LinearGradient(colors: [Color(0xFF8E2DE2), kPink]),
+            color: _following ? Colors.white.withValues(alpha: 0.14) : null,
+            borderRadius: BorderRadius.circular(20)),
+        child: Text(_following ? 'Following' : 'Follow',
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
   int _tabIx = 0;
   String? _replyTo;
   List<Map<String, dynamic>> _likers = [];
@@ -2897,6 +2967,7 @@ class _PostDetailState extends State<_PostDetail> {
   void initState() {
     super.initState();
     _load();
+    _loadFollow();
   }
 
   @override
@@ -3017,6 +3088,7 @@ class _PostDetailState extends State<_PostDetail> {
                   Text(widget.ago, style: const TextStyle(color: Colors.white54)),
                 ]),
               ),
+            _followBtn(),
             ]),
           ),
           Expanded(
