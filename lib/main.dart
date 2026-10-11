@@ -22,7 +22,19 @@ Future<void> loadPosts() async {
         .select()
         .order('created_at', ascending: false)
         .limit(50);
-    postsNotifier.value = List<Map<String, dynamic>>.from(data);
+    final _pl = List<Map<String, dynamic>>.from(data);
+    try {
+      final _lk = await supabase.from('post_likes').select('post_id');
+      final _likeMap = <String, int>{};
+      for (final e in _lk) {
+        final k = '${e['post_id']}';
+        _likeMap[k] = (_likeMap[k] ?? 0) + 1;
+      }
+      for (final p in _pl) {
+        p['likes'] = _likeMap['${p['id']}'] ?? 0;
+      }
+    } catch (_) {}
+    postsNotifier.value = _pl;
     postsError.value = null;
   } catch (e) {
     postsError.value = e.toString();
