@@ -1671,8 +1671,77 @@ class LiveScreen extends StatelessWidget {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _avatar;
+  int _fans = 0, _following = 0, _coins = 0, _diamonds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMe();
+  }
+
+  Future<void> _loadMe() async {
+    final u = supabase.auth.currentUser;
+    if (u == null) return;
+    try {
+      final pr = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', u.id)
+          .maybeSingle();
+      final w = await supabase
+          .from('wallets')
+          .select('coins,diamonds')
+          .eq('user_id', u.id)
+          .maybeSingle();
+      final fa = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', u.id);
+      final fg = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', u.id);
+      if (!mounted) return;
+      setState(() {
+        _avatar = pr?['avatar_url'] as String?;
+        _coins = ((w?['coins'] ?? 0) as num).toInt();
+        _diamonds = ((w?['diamonds'] ?? 0) as num).toInt();
+        _fans = fa.length;
+        _following = fg.length;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _changeAvatar() async {
+    final u = supabase.auth.currentUser;
+    if (u == null) return;
+    final x = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, maxWidth: 600, imageQuality: 80);
+    if (x == null) return;
+    try {
+      final bytes = await x.readAsBytes();
+      final path = '${u.id}/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await supabase.storage.from('media').uploadBinary(path, bytes,
+          fileOptions: const FileOptions(contentType: 'image/jpeg'));
+      final url = supabase.storage.from('media').getPublicUrl(path);
+      await supabase.from('profiles').update({'avatar_url': url}).eq('id', u.id);
+      if (!mounted) return;
+      setState(() => _avatar = url);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Photo upload nahi hui: $e')));
+    }
+  }
 
   void _soon(BuildContext c, String t) => ScaffoldMessenger.of(c)
       .showSnackBar(SnackBar(content: Text('$t - coming soon')));
@@ -1797,8 +1866,16 @@ class ProfileScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(children: [
-                  const CircleAvatar(
-                      radius: 40, child: Icon(Icons.person, size: 40)),
+                  GestureDetector(
+                onTap: _changeAvatar,
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundImage:
+                      _avatar != null ? NetworkImage(_avatar!) : null,
+                  child: _avatar == null
+                      ? const Icon(Icons.person, size: 40)
+                      : null,
+                )),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -1866,10 +1943,10 @@ class ProfileScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(children: [
-                  _stat(context, 'Fans', 0),
-                  _stat(context, 'Following', 0),
-                  _stat(context, 'Coins', 0),
-                  _stat(context, 'Diamond', 0),
+                  _stat(context, 'Fans', _fans),
+                  _stat(context, 'Following', _following),
+                  _stat(context, 'Coins', _coins),
+                  _stat(context, 'Diamond', _diamonds),
                 ]),
               ),
               Padding(
