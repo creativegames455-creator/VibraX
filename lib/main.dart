@@ -1902,10 +1902,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text('@${currentUsername()}',
                               style: const TextStyle(
                                   fontSize: 20, fontWeight: FontWeight.bold)),
-                          Text(user?.email ?? '',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 12)),
-                          const SizedBox(height: 4),
                           Row(children: [
                             Text('ID: $shortId',
                                 style:
@@ -1935,7 +1931,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: BoxDecoration(
                       color: _glass, borderRadius: BorderRadius.circular(16)),
                   child: Row(children: [
-                    const Text('Me+ ',
+                    const Text('VibraX ',
                         style: TextStyle(
                             color: kPink,
                             fontStyle: FontStyle.italic,
@@ -2018,7 +2014,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _ProfItem('Top Fans', Icons.star_border),
                 _ProfItem('Fans Group', Icons.groups_outlined),
                 _ProfItem('Visitor Records', Icons.person_search_outlined,
-                    tag: 'Me+ Gold'),
+                    tag: 'VibraX Gold'),
                 _ProfItem('History', Icons.history),
               ]),
               _group(context, const [
