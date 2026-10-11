@@ -2637,7 +2637,11 @@ class _MomentFeedCardState extends State<_MomentFeedCard> {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 4, 8),
           child: Row(children: [
-            CircleAvatar(
+            GestureDetector(
+  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => UserProfileScreen(
+          userId: '${p['user_id']}', name: name, avatar: _avatar))),
+  child: CircleAvatar(
               radius: 24,
               backgroundColor: colorFor('${p['user_id'] ?? name}'),
               backgroundImage: hasAv ? NetworkImage(_avatar!) : null,
@@ -2645,7 +2649,7 @@ class _MomentFeedCardState extends State<_MomentFeedCard> {
                   ? null
                   : Text(name.substring(0, 1).toUpperCase(),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
+            )),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -3616,7 +3620,11 @@ class _VideoPageState extends State<_VideoPage> {
             child: Row(children: [
               Expanded(
                 child: Row(children: [
-                  CircleAvatar(
+                  GestureDetector(
+  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => UserProfileScreen(
+          userId: '${p['user_id']}', name: name, avatar: _avatar))),
+  child: CircleAvatar(
                     radius: 18,
                     backgroundColor: colorFor('${p['user_id'] ?? name}'),
                     backgroundImage: hasAv ? NetworkImage(_avatar!) : null,
@@ -3624,7 +3632,7 @@ class _VideoPageState extends State<_VideoPage> {
                         ? null
                         : Text(name.substring(0, 1).toUpperCase(),
                             style: const TextStyle(color: Colors.white)),
-                  ),
+                  )),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(name,
@@ -3804,7 +3812,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 icon: const Icon(Icons.arrow_back, size: 28),
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
-              _chatAv(widget.peerAvatar, widget.peerName, widget.peerId, 22),
+              GestureDetector(
+  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => UserProfileScreen(
+          userId: widget.peerId, name: widget.peerName, avatar: widget.peerAvatar))),
+  child: _chatAv(widget.peerAvatar, widget.peerName, widget.peerId, 22)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(widget.peerName,
@@ -4011,7 +4023,11 @@ class _ConvListState extends State<_ConvList> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(children: [
-              _chatAv(c['avatar'] as String?, '${c['name']}', '${c['peer']}', 26),
+              GestureDetector(
+  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => UserProfileScreen(
+          userId: '${c['peer']}', name: '${c['name']}', avatar: c['avatar'] as String?))),
+  child: _chatAv(c['avatar'] as String?, '${c['name']}', '${c['peer']}', 26)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
