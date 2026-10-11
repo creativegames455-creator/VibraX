@@ -2703,6 +2703,196 @@ class _PostDetailState extends State<_PostDetail> {
   bool _sending = false;
   String get _id => '${widget.post['id']}';
 
+  int _tabIx = 0;
+  String? _replyTo;
+  List<Map<String, dynamic>> _likers = [];
+  Map<String, int> _cCount = {};
+  Set<String> _cMine = {};
+
+  Future<void> _loadLikers() async {
+    try {
+      final r = await supabase
+          .from('post_likes')
+          .select('user_id, created_at, profiles(username, avatar_url)')
+          .eq('post_id', _id)
+          .order('created_at', ascending: false);
+      if (!mounted) return;
+      setState(() => _likers = List<Map<String, dynamic>>.from(r));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleCLike(String cid) async {
+    final me = supabase.auth.currentUser?.id;
+    if (me == null) {
+      _msg('Pehle login karein');
+      return;
+    }
+    final had = _cMine.contains(cid);
+    setState(() {
+      if (had) {
+        _cMine.remove(cid);
+        _cCount[cid] = (_cCount[cid] ?? 1) - 1;
+      } else {
+        _cMine.add(cid);
+        _cCount[cid] = (_cCount[cid] ?? 0) + 1;
+      }
+    });
+    try {
+      if (had) {
+        await supabase
+            .from('comment_likes')
+            .delete()
+            .eq('comment_id', cid)
+            .eq('user_id', me);
+      } else {
+        await supabase
+            .from('comment_likes')
+            .insert({'comment_id': cid, 'user_id': me});
+      }
+    } catch (_) {
+      _load();
+    }
+  }
+
+  Widget _av(String? url, String? name, String uid, double rad) {
+    final has = url != null && url.isNotEmpty;
+    final n = (name == null || name.isEmpty) ? 'u' : name;
+    return CircleAvatar(
+      radius: rad,
+      backgroundColor: colorFor(uid),
+      backgroundImage: has ? NetworkImage(url) : null,
+      child: has
+          ? null
+          : Text(n.substring(0, 1).toUpperCase(),
+              style: const TextStyle(color: Colors.white)),
+    );
+  }
+
+  List<Map<String, dynamic>> _ordered() {
+    final tops = _items.where((e) => e['parent_id'] == null).toList();
+    final out = <Map<String, dynamic>>[];
+    for (final t in tops) {
+      out.add(t);
+      out.addAll(_items.where((e) => '${e['parent_id']}' == '${t['id']}'));
+    }
+    return out;
+  }
+
+  Widget _tabBtn(String label, int i) {
+    final sel = _tabIx == i;
+    return GestureDetector(
+      onTap: () => setState(() => _tabIx = i),
+      child: Column(children: [
+        Text(label,
+            style: TextStyle(
+                color: sel ? Colors.white : Colors.white54,
+                fontSize: 20,
+                fontWeight: sel ? FontWeight.bold : FontWeight.w500)),
+        const SizedBox(height: 4),
+        Container(
+          height: 4,
+          width: sel ? 30 : 0,
+          decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF8E2DE2), kPink]),
+              borderRadius: BorderRadius.circular(4)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _commentRow(Map<String, dynamic> c) {
+    final pr = c['profiles'] as Map?;
+    final name = '${pr?['username'] ?? c['username'] ?? 'user'}';
+    final isReply = c['parent_id'] != null;
+    final cid = '${c['id']}';
+    final liked = _cMine.contains(cid);
+    final n = _cCount[cid] ?? 0;
+    return Padding(
+      padding: EdgeInsets.only(left: isReply ? 44 : 0, bottom: 16),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _av(pr?['avatar_url'] as String?, name, '${c['user_id']}',
+            isReply ? 14 : 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name,
+                style: const TextStyle(
+                    color: Colors.white70, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text('${c['body']}',
+                style: const TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 4),
+            Row(children: [
+              Text(_agoText(c['created_at']),
+                  style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              const SizedBox(width: 18),
+              GestureDetector(
+                onTap: () {
+                  _replyTo = isReply ? '${c['parent_id']}' : cid;
+                  _ctl.text = '@$name ';
+                  _ctl.selection =
+                      TextSelection.collapsed(offset: _ctl.text.length);
+                },
+                child: const Text('Reply',
+                    style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold)),
+              ),
+            ]),
+          ]),
+        ),
+        GestureDetector(
+          onTap: () => _toggleCLike(cid),
+          child: Column(children: [
+            Icon(liked ? Icons.favorite : Icons.favorite_border,
+                color: liked ? kPink : Colors.white70, size: 22),
+            const SizedBox(height: 2),
+            Text('$n',
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  List<Widget> _tabBody() {
+    if (_tabIx == 1) {
+      if (_likers.isEmpty) {
+        return [
+          const Text('Abhi koi like nahi',
+              style: TextStyle(color: Colors.white54))
+        ];
+      }
+      return [
+        for (final l in _likers)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(children: [
+              _av((l['profiles'] as Map?)?['avatar_url'] as String?,
+                  (l['profiles'] as Map?)?['username'] as String?,
+                  '${l['user_id']}', 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                    '${(l['profiles'] as Map?)?['username'] ?? 'user'}',
+                    style: const TextStyle(color: Colors.white, fontSize: 17)),
+              ),
+            ]),
+          ),
+      ];
+    }
+    if (_items.isEmpty) {
+      return [
+        const Text('Pehla comment karein',
+            style: TextStyle(color: Colors.white54))
+      ];
+    }
+    return [for (final c in _ordered()) _commentRow(c)];
+  }
+
+
   @override
   void initState() {
     super.initState();
@@ -2722,13 +2912,44 @@ class _PostDetailState extends State<_PostDetail> {
 
   Future<void> _load() async {
     try {
-      final r = await supabase
-          .from('comments')
-          .select()
-          .eq('post_id', _id)
-          .order('created_at', ascending: true);
+      List<Map<String, dynamic>> list;
+      try {
+        list = List<Map<String, dynamic>>.from(await supabase
+            .from('comments')
+            .select('*, profiles(username, avatar_url)')
+            .eq('post_id', _id)
+            .order('created_at', ascending: true));
+      } catch (_) {
+        list = List<Map<String, dynamic>>.from(await supabase
+            .from('comments')
+            .select()
+            .eq('post_id', _id)
+            .order('created_at', ascending: true));
+      }
+      final cnt = <String, int>{};
+      final mine = <String>{};
+      try {
+        if (list.isNotEmpty) {
+          final ids = list.map((e) => '${e['id']}').join(',');
+          final lk = await supabase
+              .from('comment_likes')
+              .select('comment_id,user_id')
+              .filter('comment_id', 'in', '($ids)');
+          final me = supabase.auth.currentUser?.id;
+          for (final e in lk) {
+            final k = '${e['comment_id']}';
+            cnt[k] = (cnt[k] ?? 0) + 1;
+            if ('${e['user_id']}' == me) mine.add(k);
+          }
+        }
+      } catch (_) {}
       if (!mounted) return;
-      setState(() => _items = List<Map<String, dynamic>>.from(r));
+      setState(() {
+        _items = list;
+        _cCount = cnt;
+        _cMine = mine;
+      });
+      _loadLikers();
     } catch (_) {}
   }
 
@@ -2747,7 +2968,9 @@ class _PostDetailState extends State<_PostDetail> {
         'user_id': me,
         'username': '${currentUsername()}',
         'body': t,
+        if (_replyTo != null) 'parent_id': _replyTo,
       });
+      _replyTo = null;
       _ctl.clear();
       await _load();
     } catch (e) {
@@ -2816,55 +3039,14 @@ class _PostDetailState extends State<_PostDetail> {
                   child: Text(caption, style: const TextStyle(color: Colors.white, fontSize: 17)),
                 ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
-                child: Text('Comments (${_items.length})',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                padding: const EdgeInsets.fromLTRB(0, 20, 0, 14),
+                child: Row(children: [
+                  _tabBtn('Moments', 0),
+                  const SizedBox(width: 28),
+                  _tabBtn('Like', 1),
+                ]),
               ),
-              if (_items.isEmpty)
-                const Text('Pehla comment karein', style: TextStyle(color: Colors.white54)),
-              for (final c in _items)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: colorFor('${c['user_id']}'),
-                      child: Text('${c['username'] ?? 'u'}'.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(color: Colors.white)),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${c['username'] ?? 'user'}',
-                            style: const TextStyle(
-                                color: Colors.white70, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 2),
-                        Text('${c['body']}',
-                            style: const TextStyle(color: Colors.white, fontSize: 16)),
-                        const SizedBox(height: 4),
-                        Row(children: [
-                          Text(_agoText(c['created_at']),
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 13)),
-                          const SizedBox(width: 18),
-                          GestureDetector(
-                            onTap: () {
-                              _ctl.text = '@${c['username']} ';
-                              _ctl.selection = TextSelection.collapsed(
-                                  offset: _ctl.text.length);
-                            },
-                            child: const Text('Reply',
-                                style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ]),
-                      ]),
-                    ),
-                  ]),
-                ),
+              ..._tabBody(),
             ]),
           ),
           Padding(
