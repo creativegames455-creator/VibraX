@@ -908,7 +908,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             .where((p) => _followingIds.contains('${p['user_id']}'))
             .toList();
       default:
-        final l = List<Map<String, dynamic>>.from(all);
+        final l = all.where((p) => p['media_type'] != 'video').toList();
         l.sort((a, b) {
           final c = (_likeCounts['${b['id']}'] ?? 0)
               .compareTo(_likeCounts['${a['id']}'] ?? 0);
