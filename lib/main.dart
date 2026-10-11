@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
@@ -2316,7 +2317,9 @@ class MessageScreen extends StatelessWidget {
               child: Text('No messages yet.',
                   style: TextStyle(color: Colors.white54, fontSize: 16)),
             ),
-          ],
+          const SizedBox(height: 16),
+          const _ConvList(),
+        ],
         ),
       ),
     );
@@ -2703,6 +2706,26 @@ class _PostDetailState extends State<_PostDetail> {
   bool _sending = false;
   String get _id => '${widget.post['id']}';
 
+  Widget _msgBtn() {
+    final me = supabase.auth.currentUser?.id;
+    if (me == null || me == _authorId) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ChatScreen(
+              peerId: _authorId,
+              peerName: '${widget.post['username'] ?? 'user'}',
+              peerAvatar: widget.avatar))),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            shape: BoxShape.circle),
+        child: const Icon(Icons.chat_bubble_outline,
+            color: Colors.white, size: 20),
+      ),
+    );
+  }
+
   bool _following = false;
   bool _fBusy = false;
   String get _authorId => '${widget.post['user_id']}';
@@ -3088,6 +3111,8 @@ class _PostDetailState extends State<_PostDetail> {
                   Text(widget.ago, style: const TextStyle(color: Colors.white54)),
                 ]),
               ),
+            _msgBtn(),
+            const SizedBox(width: 8),
             _followBtn(),
             ]),
           ),
@@ -3622,6 +3647,371 @@ class _VideoPageState extends State<_VideoPage> {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.white, fontSize: 17)),
+        ),
+    ]);
+  }
+}
+
+
+Widget _chatAv(String? url, String? name, String uid, double rad) {
+  final has = url != null && url.isNotEmpty;
+  final n = (name == null || name.isEmpty) ? 'u' : name;
+  return CircleAvatar(
+    radius: rad,
+    backgroundColor: colorFor(uid),
+    backgroundImage: has ? NetworkImage(url) : null,
+    child: has
+        ? null
+        : Text(n.substring(0, 1).toUpperCase(),
+            style: const TextStyle(color: Colors.white)),
+  );
+}
+
+class ChatScreen extends StatefulWidget {
+  final String peerId;
+  final String peerName;
+  final String? peerAvatar;
+  const ChatScreen(
+      {super.key,
+      required this.peerId,
+      required this.peerName,
+      this.peerAvatar});
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final _ctl = TextEditingController();
+  List<Map<String, dynamic>> _msgs = [];
+  Timer? _timer;
+  bool _sending = false;
+  String? get _me => supabase.auth.currentUser?.id;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final me = _me;
+    if (me == null) return;
+    final peer = widget.peerId;
+    try {
+      final r = await supabase
+          .from('messages')
+          .select()
+          .or('and(sender_id.eq.$me,receiver_id.eq.$peer),and(sender_id.eq.$peer,receiver_id.eq.$me)')
+          .order('created_at', ascending: false)
+          .limit(200);
+      final list = List<Map<String, dynamic>>.from(r);
+      final unread = list
+          .where((m) => '${m['receiver_id']}' == me && m['read_at'] == null)
+          .map((m) => '${m['id']}')
+          .toList();
+      if (unread.isNotEmpty) {
+        try {
+          await supabase
+              .from('messages')
+              .update({'read_at': DateTime.now().toUtc().toIso8601String()})
+              .filter('id', 'in', '(${unread.join(',')})');
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      setState(() => _msgs = list);
+    } catch (_) {}
+  }
+
+  Future<void> _send() async {
+    final t = _ctl.text.trim();
+    final me = _me;
+    if (t.isEmpty || _sending || me == null) return;
+    setState(() => _sending = true);
+    try {
+      await supabase.from('messages').insert(
+          {'sender_id': me, 'receiver_id': widget.peerId, 'body': t});
+      _ctl.clear();
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Message nahi gaya: $e')));
+      }
+    }
+    if (mounted) setState(() => _sending = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final me = _me;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 12, 6),
+            child: Row(children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, size: 28),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+              _chatAv(widget.peerAvatar, widget.peerName, widget.peerId, 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(widget.peerName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: _msgs.isEmpty
+                ? const Center(
+                    child: Text('Salam bhejein',
+                        style: TextStyle(color: Colors.white54)))
+                : ListView.builder(
+                    reverse: true,
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                    itemCount: _msgs.length,
+                    itemBuilder: (c, i) {
+                      final m = _msgs[i];
+                      final mine = '${m['sender_id']}' == me;
+                      return Align(
+                        alignment: mine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75),
+                          decoration: BoxDecoration(
+                              gradient: mine
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF8E2DE2), kPink])
+                                  : null,
+                              color: mine
+                                  ? null
+                                  : Colors.white.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(18)),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('${m['body']}',
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 16)),
+                                const SizedBox(height: 2),
+                                Text(_agoText(m['created_at']),
+                                    style: const TextStyle(
+                                        color: Colors.white54, fontSize: 11)),
+                              ]),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+            child: Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _ctl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Say something...',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.12),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(26),
+                        borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _send,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                  decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFF8E2DE2), kPink]),
+                      borderRadius: BorderRadius.circular(26)),
+                  child: _sending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Text('Send',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16)),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ConvList extends StatefulWidget {
+  const _ConvList();
+  @override
+  State<_ConvList> createState() => _ConvListState();
+}
+
+class _ConvListState extends State<_ConvList> {
+  List<Map<String, dynamic>> _convs = [];
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final me = supabase.auth.currentUser?.id;
+    if (me == null) return;
+    try {
+      final r = await supabase
+          .from('messages')
+          .select()
+          .or('sender_id.eq.$me,receiver_id.eq.$me')
+          .order('created_at', ascending: false)
+          .limit(300);
+      final byPeer = <String, Map<String, dynamic>>{};
+      final unread = <String, int>{};
+      for (final m in r) {
+        final peer = '${m['sender_id']}' == me
+            ? '${m['receiver_id']}'
+            : '${m['sender_id']}';
+        byPeer.putIfAbsent(peer, () => Map<String, dynamic>.from(m));
+        if ('${m['receiver_id']}' == me && m['read_at'] == null) {
+          unread[peer] = (unread[peer] ?? 0) + 1;
+        }
+      }
+      final profs = <String, Map<String, dynamic>>{};
+      if (byPeer.isNotEmpty) {
+        final pr = await supabase
+            .from('profiles')
+            .select('id,username,avatar_url')
+            .filter('id', 'in', '(${byPeer.keys.join(',')})');
+        for (final p in pr) {
+          profs['${p['id']}'] = Map<String, dynamic>.from(p);
+        }
+      }
+      final out = <Map<String, dynamic>>[];
+      byPeer.forEach((peer, m) {
+        out.add({
+          'peer': peer,
+          'last': m,
+          'unread': unread[peer] ?? 0,
+          'name': profs[peer]?['username'] ?? 'user',
+          'avatar': profs[peer]?['avatar_url'],
+        });
+      });
+      if (!mounted) return;
+      setState(() => _convs = out);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_convs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: Text('Abhi koi chat nahi.\nKisi ki post par chat button dabayen.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white54)),
+        ),
+      );
+    }
+    return Column(children: [
+      for (final c in _convs)
+        GestureDetector(
+          onTap: () => Navigator.of(context)
+              .push(MaterialPageRoute(
+                  builder: (_) => ChatScreen(
+                      peerId: '${c['peer']}',
+                      peerName: '${c['name']}',
+                      peerAvatar: c['avatar'] as String?)))
+              .then((_) => _load()),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(children: [
+              _chatAv(c['avatar'] as String?, '${c['name']}', '${c['peer']}', 26),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${c['name']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('${(c['last'] as Map)['body']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white54, fontSize: 14)),
+                    ]),
+              ),
+              const SizedBox(width: 8),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(_agoText((c['last'] as Map)['created_at']),
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 4),
+                if ((c['unread'] as int) > 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                        color: kPink, borderRadius: BorderRadius.circular(10)),
+                    child: Text('${c['unread']}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
+                  ),
+              ]),
+            ]),
+          ),
         ),
     ]);
   }
